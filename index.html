@@ -276,7 +276,7 @@ td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-al
     <button class="nav-btn" data-go="agent"><svg><use href="#i-agent"/></svg><span>Agent</span></button>
     <button class="nav-btn" data-go="rules"><svg><use href="#i-rules"/></svg><span>Rules</span></button>
     <button class="nav-btn" data-go="stake"><svg><use href="#i-stake"/></svg><span>Sentinels</span></button>
-    <button class="nav-btn" data-go="wallet"><svg><use href="#i-wallet"/></svg><span>Wallet</span></button>
+    <button class="nav-btn" data-go="wallet"><svg><use href="#i-wallet"/></svg><span>Vault</span></button>
     <button class="btn primary cta" data-connect><svg width="18" height="18"><use href="#i-wallet"/></svg><span class="connect-label">Connect wallet</span></button>
     <div class="rail-foot">Robinhood Chain · Simulation mode until contracts are audited and deployed.</div>
   </nav>
@@ -406,8 +406,9 @@ td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-al
         <p>Sentinels stake $VETO to report drainer and rug contracts. A report that holds up after a 48-hour challenge window goes on the shared threat list, and every VETO vault blocks that address. False reports lose part of their stake.</p>
         <div class="chips"><span class="pill accent">Pre-launch · figures below are the proposed design</span></div>
       </div>
+      <div class="section" id="liveStats" hidden></div>
       <div class="section">
-        <div class="rule-head" style="margin-bottom:10px"><span class="label">Live threat list (sample)</span></div>
+        <div class="rule-head" style="margin-bottom:10px"><span class="label">Example threat list</span></div>
         <div class="tbl-wrap">
           <table>
             <thead><tr><th>Contract</th><th>Reason</th><th style="text-align:right">Stake</th><th style="text-align:right">Blocked</th></tr></thead>
@@ -432,10 +433,11 @@ td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-al
     </section>
 
     <!-- WALLET -->
-    <section class="view" id="v-wallet" hidden data-title="Wallet" data-sub="Connect a real wallet on Robinhood Chain.">
+    <section class="view" id="v-wallet" hidden data-title="Vault" data-sub="Your real vault. Live on Robinhood Chain testnet with test tokens.">
       <div class="section">
         <div class="wallet-card" id="walletCard"></div>
       </div>
+      <div id="vaultPanel"></div>
       <div class="section">
         <form class="wallet-card" id="linkForm" autocomplete="off">
           <span class="label">Link Telegram</span>
@@ -455,10 +457,10 @@ td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-al
       <div class="section">
         <span class="label">Network</span>
         <dl class="kv" style="margin-top:12px">
-          <dt>Chain</dt><dd>Robinhood Chain</dd>
-          <dt>Chain ID</dt><dd>4663 (0x1237)</dd>
-          <dt>RPC</dt><dd>rpc.mainnet.chain.robinhood.com</dd>
-          <dt>Explorer</dt><dd><a href="https://robinhoodchain.blockscout.com" target="_blank" rel="noopener">robinhoodchain.blockscout.com</a></dd>
+          <dt>Chain</dt><dd id="netName">Robinhood Chain Testnet</dd>
+          <dt>Chain ID</dt><dd id="netId">46630</dd>
+          <dt>RPC</dt><dd id="netRpc">rpc.testnet.chain.robinhood.com</dd>
+          <dt>Explorer</dt><dd id="netExplorer"><a href="https://explorer.testnet.chain.robinhood.com" target="_blank" rel="noopener">explorer.testnet.chain.robinhood.com</a></dd>
         </dl>
       </div>
       <div class="section note">Connecting only reads your address and balance. VETO never asks for your seed phrase, and this page never sends a transaction without you confirming it in your wallet.</div>
@@ -490,7 +492,7 @@ td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-al
   <button data-go="agent"><svg><use href="#i-agent"/></svg>Agent</button>
   <button data-go="rules"><svg><use href="#i-rules"/></svg>Rules</button>
   <button data-go="stake"><svg><use href="#i-stake"/></svg>Sentinels</button>
-  <button data-go="wallet"><svg><use href="#i-wallet"/></svg>Wallet</button>
+  <button data-go="wallet"><svg><use href="#i-wallet"/></svg>Vault</button>
 </nav>
 
 <div class="scrim" id="scrim" hidden>
@@ -744,7 +746,12 @@ td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-al
   });
 
   /* ---------------- Real wallet (EIP-6963 / EIP-1193) ---------------- */
-  const CHAIN = { id: 4663, hex: '0x1237', name: 'Robinhood Chain', rpc: 'https://rpc.mainnet.chain.robinhood.com', explorer: 'https://robinhoodchain.blockscout.com' };
+  const NETS = {
+    46630: { id: 46630, hex: '0xb626', name: 'Robinhood Chain Testnet', rpc: 'https://rpc.testnet.chain.robinhood.com', explorer: 'https://explorer.testnet.chain.robinhood.com' },
+    4663: { id: 4663, hex: '0x1237', name: 'Robinhood Chain', rpc: 'https://rpc.mainnet.chain.robinhood.com', explorer: 'https://robinhoodchain.blockscout.com' },
+    31337: { id: 31337, hex: '0x7a69', name: 'Local test chain', rpc: 'http://127.0.0.1:8545', explorer: '' },
+  };
+  const CHAIN = { ...NETS[46630] }; // testnet until mainnet contracts are audited
   const W = { provider: null, name: '', address: null, chainId: null, balance: null };
   const found = new Map();
   window.addEventListener('eip6963:announceProvider', (e) => { const d = e.detail; if (d?.info?.rdns && d.provider) found.set(d.info.rdns, d); });
@@ -780,6 +787,7 @@ td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-al
   async function connect(w) {
     closeModal();
     W.provider = w.provider; W.name = w.name;
+    window.VETO_APP && (window.VETO_APP.W = W);
     try {
       const accts = await W.provider.request({ method: 'eth_requestAccounts' });
       W.address = accts[0];
@@ -803,16 +811,20 @@ td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-al
     const on = !!W.address, right = W.chainId === CHAIN.id;
     $$('.connect-label').forEach((l) => (l.textContent = on ? short(W.address) : l.closest('.topbar') ? 'Connect' : 'Connect wallet'));
     $('#walletCard').innerHTML = on
-      ? `<div class="status-row"><span class="label">${esc(W.name)}</span><span class="pill ${right ? 'ok' : 'warn'}"><span class="dot"></span>${right ? 'ROBINHOOD CHAIN' : 'WRONG NETWORK'}</span></div>
+      ? `<div class="status-row"><span class="label">${esc(W.name)}</span><span class="pill ${right ? 'ok' : 'warn'}"><span class="dot"></span>${right ? esc(CHAIN.name.toUpperCase()) : 'WRONG NETWORK'}</span></div>
          <div class="addr">${esc(W.address)}</div>
          <div><span class="label">Balance</span><div class="bal" style="margin-top:6px">${W.balance == null ? '—' : W.balance.toFixed(4) + ' ETH'}</div></div>
-         <div class="chips">${right ? `<a class="btn sm" href="${CHAIN.explorer}/address/${esc(W.address)}" target="_blank" rel="noopener">View on explorer</a>` : '<button class="btn sm primary" type="button" id="switchNet">Switch to Robinhood Chain</button>'}<button class="btn sm" type="button" id="refreshBal">Refresh</button><button class="btn sm danger" type="button" id="discBtn">Disconnect</button></div>`
+         <div class="chips">${right ? (CHAIN.explorer ? `<a class="btn sm" href="${CHAIN.explorer}/address/${esc(W.address)}" target="_blank" rel="noopener">View on explorer</a>` : '') : `<button class="btn sm primary" type="button" id="switchNet">Switch to ${esc(CHAIN.name)}</button>`}<button class="btn sm" type="button" id="refreshBal">Refresh</button><button class="btn sm danger" type="button" id="discBtn">Disconnect</button></div>`
       : `<span class="label">Not connected</span><div class="bal">Connect to see your vault</div><p class="note" style="margin:0">Works with MetaMask, Rabby, Coinbase Wallet and any wallet that supports Robinhood Chain.</p><button class="btn primary" type="button" data-connect>Connect wallet</button>`;
     $('#switchNet')?.addEventListener('click', () => ensureChain().then(refresh).catch((e) => toast(walletErr(e))));
     $('#refreshBal')?.addEventListener('click', refresh);
     $('#discBtn')?.addEventListener('click', disconnect);
     $$('#walletCard [data-connect]').forEach((b) => b.addEventListener('click', openConnect));
+    hooks.forEach((f) => { try { f(); } catch (e) { console.error(e); } });
   }
+  const hooks = [];
+  // The live-vault script below reads wallet state and helpers from here.
+  window.VETO_APP = { W, CHAIN, NETS, hooks, refresh, ensureChain, openConnect, walletErr, toast, modal: (t, h) => modal(t, h), closeModal: () => closeModal(), esc, short, go: (v) => go(v) };
   $$('[data-connect]').forEach((b) => b.addEventListener('click', () => (W.address ? go('wallet') : openConnect())));
   renderWallet();
 
@@ -859,10 +871,357 @@ td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-al
     $('#viewSub').textContent = sec.dataset.sub;
     try { history.replaceState(null, '', '#' + v); } catch {}
     window.scrollTo(0, 0);
+    window.dispatchEvent(new CustomEvent('veto:view', { detail: v }));
   }
   $$('[data-go]').forEach((b) => b.addEventListener('click', (e) => { e.preventDefault(); go(b.dataset.go); }));
   go((location.hash || '#home').slice(1));
   renderStatus();
+})();
+</script>
+<style>
+.vgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: start; }
+.field { display: grid; gap: 6px; min-width: 0; }
+.field input[type="number"], .field input[type="text"] { width: 100%; background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; outline: none; font: 500 15px/1.2 var(--f-mono); font-variant-numeric: tabular-nums; }
+.field input:focus { border-color: var(--accent); }
+.field small { color: var(--mute); font-size: 12px; }
+.check { display: flex; gap: 10px; align-items: center; font-size: 14px; }
+.check input { width: 18px; height: 18px; accent-color: var(--accent); }
+.balrow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.balrow .stat b { font-size: 17px; overflow-wrap: anywhere; }
+.live-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); margin-right: 6px; box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 25%, transparent); }
+.btn[disabled] { opacity: .55; cursor: progress; }
+@media (max-width: 700px) { .balrow { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
+<script>
+/* Live vaults on Robinhood Chain testnet. Reads deployments.json next to this page; without it the
+   Vault tab explains that live vaults open once contracts are deployed, and the rest stays a demo. */
+(() => {
+  const A = window.VETO_APP;
+  if (!A) return;
+  const $ = (s, r = document) => r.querySelector(s);
+  const panel = $('#vaultPanel');
+  const E = window.ethers;
+
+  const ABI = {
+    factory: [
+      'function createVault(address agent) returns (address)',
+      'function vaultsOf(address owner) view returns (address[])',
+      'function vaultCount() view returns (uint256)',
+      'function allVaults(uint256) view returns (address)',
+    ],
+    vault: [
+      'function owner() view returns (address)', 'function agent() view returns (address)',
+      'function frozen() view returns (bool)', 'function cooldown() view returns (uint64)',
+      'function moveCount() view returns (uint256)', 'function lastExec() view returns (uint64)',
+      'function allowedApp(address) view returns (bool)',
+      'function limitOf(address) view returns (uint128 perTx, uint128 perDay)',
+      'function remainingToday(address) view returns (uint256)',
+      'function setFrozen(bool)', 'function setAgent(address)', 'function setLimit(address,uint128,uint128)',
+      'function setCooldown(uint64)', 'function setApp(address,bool)', 'function withdraw(address,address,uint256)',
+      'function multicall(bytes[]) returns (bytes[])',
+      'error NotOwner()', 'error CallFailed(bytes reason)',
+    ],
+    token: [
+      'function balanceOf(address) view returns (uint256)', 'function transfer(address,uint256) returns (bool)',
+      'function faucet()', 'function lastClaim(address) view returns (uint256)', 'function faucetAmount() view returns (uint256)',
+      'error FaucetCooldown(uint256 readyAt)', 'error ERC20InsufficientBalance(address sender, uint256 balance, uint256 needed)',
+    ],
+    registry: ['function flaggedCount() view returns (uint256)', 'function isFlagged(address) view returns (bool)'],
+  };
+  const STOCKS = ['NVDA', 'TSLA', 'AAPL'];
+  const S = { dep: null, vault: null, vaults: [], busy: false, data: null, error: '' };
+
+  const fmt = (v, d = 2) => Number(E.formatUnits(v, 18)).toLocaleString('en-US', { maximumFractionDigits: d });
+  const parse = (x) => E.parseUnits(String(x || 0), 18);
+  const timeAgo = (t) => {
+    if (!t) return 'never';
+    const s = Math.max(0, Math.floor(Date.now() / 1000) - Number(t));
+    return s < 60 ? `${s}s ago` : s < 3600 ? `${Math.floor(s / 60)}m ago` : s < 86400 ? `${Math.floor(s / 3600)}h ago` : `${Math.floor(s / 86400)}d ago`;
+  };
+
+  const onRightChain = () => A.W.provider && A.W.address && A.W.chainId === A.CHAIN.id;
+  let ro;
+  const reader = () => (onRightChain() ? new E.BrowserProvider(A.W.provider) : ro);
+  const c = (addr, abi, runner = reader()) => new E.Contract(addr, ABI[abi], runner);
+
+  function errText(e) {
+    if (e?.code === 'ACTION_REJECTED' || e?.info?.error?.code === 4001 || e?.code === 4001) return 'You cancelled it in your wallet.';
+    const name = e?.revert?.name;
+    if (name === 'FaucetCooldown') return `You already claimed today. Try again after ${new Date(Number(e.revert.args[0]) * 1000 + 86400000).toLocaleTimeString()}.`;
+    if (name === 'ERC20InsufficientBalance') return 'Not enough test USDG in your wallet. Use the faucet first.';
+    if (name === 'NotOwner') return 'Only the vault owner can do that.';
+    if (e?.code === 'INSUFFICIENT_FUNDS') return 'Your wallet needs a little testnet ETH for gas.';
+    return e?.shortMessage || e?.reason || e?.message || 'Something went wrong.';
+  }
+
+  async function send(label, fn) {
+    if (S.busy) return;
+    S.busy = true; render();
+    try {
+      await A.ensureChain();
+      const signer = await new E.BrowserProvider(A.W.provider).getSigner();
+      A.toast(`${label}: confirm in your wallet`);
+      const tx = await fn(signer);
+      A.toast(`${label}: waiting for the network…`);
+      await tx.wait();
+      A.toast(`${label}: done`);
+      await load();
+      stats();
+    } catch (e) {
+      A.toast(errText(e));
+    } finally {
+      S.busy = false; render();
+    }
+  }
+
+  async function load() {
+    if (!S.dep) return render();
+    try {
+      const d = S.dep;
+      const me = A.W.address ? E.getAddress(A.W.address.toLowerCase()) : null;
+      if (!me || !onRightChain()) { S.data = null; return render(); }
+      const tok = (sym) => c(d[`t${sym}`], 'token');
+      S.vaults = [...(await c(d.VetoVaultFactory, 'factory').vaultsOf(me))];
+      if (!S.vault || !S.vaults.includes(S.vault)) S.vault = S.vaults.at(-1) || null;
+      const walletUsdg = await tok('USDG').balanceOf(me);
+      const lastClaim = await tok('USDG').lastClaim(me);
+      let v = null;
+      if (S.vault) {
+        const vc = c(S.vault, 'vault');
+        const syms = ['USDG', ...STOCKS];
+        const [frozen, cooldown, moves, last, agent, appOk, usdgLim, stockLim, left, ...bals] = await Promise.all([
+          vc.frozen(), vc.cooldown(), vc.moveCount(), vc.lastExec(), vc.agent(), vc.allowedApp(d.TestRouter),
+          vc.limitOf(d.tUSDG), vc.limitOf(d.tNVDA), vc.remainingToday(d.tUSDG),
+          ...syms.map((s) => tok(s).balanceOf(S.vault)),
+        ]);
+        v = { frozen, cooldown, moves, last, agent, appOk, usdgLim, stockLim, left, bals: Object.fromEntries(syms.map((s, i) => [s, bals[i]])) };
+      }
+      S.data = { walletUsdg, lastClaim, v };
+      S.error = '';
+    } catch (e) {
+      S.error = 'Could not read the network: ' + errText(e);
+    }
+    render();
+  }
+
+  function render() {
+    if (!S.dep) {
+      panel.innerHTML = `<div class="section"><div class="wallet-card"><span class="label">Live vaults</span>
+        <div class="bal" style="font-size:22px">Opening soon on Robinhood Chain testnet</div>
+        <p class="note" style="margin:0">Live vaults switch on here as soon as the VETO contracts are deployed to testnet. Until then, the Home, Agent and Rules tabs are a demo of how VETO works.</p></div></div>`;
+      return;
+    }
+    const W = A.W, d = S.dep;
+    if (!W.address) {
+      panel.innerHTML = `<div class="section note">Connect a wallet to create your vault. Everything here uses free test tokens on ${A.esc(A.CHAIN.name)}.</div>`;
+      return;
+    }
+    if (!onRightChain()) {
+      panel.innerHTML = `<div class="section note">Switch your wallet to ${A.esc(A.CHAIN.name)} to see your vault.</div>`;
+      return;
+    }
+    if (!S.data) { panel.innerHTML = `<div class="section note">${S.error ? A.esc(S.error) : 'Loading your vault…'}</div>`; return; }
+    const { walletUsdg, lastClaim, v } = S.data;
+    const dis = S.busy ? 'disabled' : '';
+    const canClaim = !Number(lastClaim) || Date.now() / 1000 > Number(lastClaim) + 86400;
+    const faucet = `<div class="section"><div class="wallet-card">
+        <div class="status-row"><span class="label">Test USDG in your wallet</span><span class="pill accent">TEST TOKENS · NO VALUE</span></div>
+        <div class="bal mono">${fmt(walletUsdg)}</div>
+        <div class="chips"><button class="btn sm ${canClaim ? 'primary' : ''}" type="button" id="vFaucet" ${dis} ${canClaim ? '' : 'disabled'}>Get 10,000 test USDG</button></div>
+        <p class="note" style="margin:0">${canClaim ? 'Free once a day. You also need a little testnet ETH for gas.' : 'Claimed today. Come back tomorrow for more.'}</p>
+      </div></div>`;
+
+    if (!v) {
+      panel.innerHTML = faucet + `<div class="section"><form class="wallet-card" id="vCreate">
+        <span class="label">Create your vault</span>
+        <p class="note" style="margin:0">Your vault holds the funds your AI agent trades with. You own it: you set the rules, freeze it and withdraw any time. The agent can only propose moves.</p>
+        <div class="field"><label class="label" for="vAgent">Agent address</label>
+          <input type="text" id="vAgent" value="${A.esc(d.agent || '')}" spellcheck="false" autocomplete="off">
+          <small>${d.agent ? 'Pre-filled with the VETO Telegram bot’s agent.' : 'The address of the agent that will trade for you.'}</small></div>
+        <button class="btn primary" type="submit" ${dis}>Create vault</button>
+      </form></div>`;
+      bindCommon();
+      $('#vCreate')?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const agent = $('#vAgent').value.trim();
+        if (!E.isAddress(agent)) return A.toast('Enter a valid agent address (0x + 40 characters).');
+        send('Create vault', (sg) => c(d.VetoVaultFactory, 'factory', sg).createVault(agent));
+      });
+      return;
+    }
+
+    const usdgPerTx = fmt(v.usdgLim[0], 4), usdgPerDay = fmt(v.usdgLim[1], 4);
+    const stockPerTx = fmt(v.stockLim[0], 4), stockPerDay = fmt(v.stockLim[1], 4);
+    const noRules = v.usdgLim[1] === 0n;
+    const botAgent = d.agent && v.agent.toLowerCase() === d.agent.toLowerCase();
+    const plain = (x) => x.replace(/,/g, '');
+    panel.innerHTML = faucet + `
+      <div class="section"><div class="wallet-card">
+        <div class="status-row"><span class="label">Your vault${S.vaults.length > 1 ? ` (${S.vaults.length})` : ''}</span>
+          <span class="pill ${v.frozen ? 'no' : 'ok'}"><span class="dot"></span>${v.frozen ? 'FROZEN' : 'ACTIVE'}</span></div>
+        <div class="addr" style="font-size:13px">${A.esc(S.vault)}</div>
+        <div class="chips"><button class="btn sm" type="button" id="vCopy">Copy address</button>${A.CHAIN.explorer ? `<a class="btn sm" href="${A.CHAIN.explorer}/address/${A.esc(S.vault)}" target="_blank" rel="noopener">Explorer</a>` : ''}</div>
+        <div class="balrow">${['USDG', ...STOCKS].map((s) => `<div class="stat"><span class="label">${s}</span><b class="mono">${fmt(v.bals[s], 4)}</b></div>`).join('')}</div>
+        <dl class="kv">
+          <dt>Agent</dt><dd>${short(v.agent)}${botAgent ? ' · VETO bot' : ''}</dd>
+          <dt>Moves signed</dt><dd>${v.moves} · last ${timeAgo(v.last)}</dd>
+          <dt>Left today</dt><dd>${fmt(v.left)} USDG</dd>
+        </dl>
+      </div></div>
+
+      <div class="section"><form class="wallet-card" id="vDeposit">
+        <span class="label">Deposit test USDG</span>
+        <div class="field"><label class="label" for="vDepAmt">Amount</label><input type="number" id="vDepAmt" min="0" step="any" value="${Math.min(1000, Number(E.formatUnits(walletUsdg, 18))) || ''}" placeholder="1000"></div>
+        <button class="btn primary" type="submit" ${dis}>Deposit to vault</button>
+      </form></div>
+
+      <div class="section"><form class="wallet-card" id="vRules">
+        <div class="status-row"><span class="label">Vault rules (on-chain)</span>${noRules ? '<span class="pill warn">NOT SET</span>' : ''}</div>
+        ${noRules ? '<p class="note" style="margin:0">No rules yet, so the agent can’t move anything. Save these starter rules or change them first.</p>' : ''}
+        <div class="vgrid">
+          <div class="field"><label class="label" for="rUsdTx">USDG per trade</label><input type="number" id="rUsdTx" min="0" step="any" value="${noRules ? 400 : plain(usdgPerTx)}"></div>
+          <div class="field"><label class="label" for="rUsdDay">USDG per day</label><input type="number" id="rUsdDay" min="0" step="any" value="${noRules ? 1000 : plain(usdgPerDay)}"></div>
+          <div class="field"><label class="label" for="rStkTx">Shares per trade</label><input type="number" id="rStkTx" min="0" step="any" value="${noRules ? 2 : plain(stockPerTx)}"><small>Each of NVDA, TSLA, AAPL</small></div>
+          <div class="field"><label class="label" for="rStkDay">Shares per day</label><input type="number" id="rStkDay" min="0" step="any" value="${noRules ? 5 : plain(stockPerDay)}"></div>
+          <div class="field"><label class="label" for="rCool">Cooldown (seconds)</label><input type="number" id="rCool" min="0" step="1" value="${noRules ? 30 : String(v.cooldown)}"></div>
+        </div>
+        <label class="check"><input type="checkbox" id="rApp" ${v.appOk || noRules ? 'checked' : ''}> Allow the VETO test exchange</label>
+        <button class="btn primary" type="submit" ${dis}>Save rules</button>
+        <p class="note" style="margin:0">Saved in one transaction. Unlimited approvals, unknown recipients and flagged addresses are always blocked and can’t be turned off.</p>
+      </form></div>
+
+      <div class="section"><div class="kill">
+        <h3>Kill switch</h3>
+        <p>${v.frozen ? 'Your vault is frozen. The agent can’t sign anything until you unfreeze it.' : 'Freeze the vault instantly. The agent can’t sign anything until you unfreeze it. You can still withdraw.'}</p>
+        <div class="chips">
+          <button class="btn ${v.frozen ? 'primary' : 'danger'}" type="button" id="vFreeze" ${dis}>${v.frozen ? 'Unfreeze vault' : 'Freeze vault now'}</button>
+          <button class="btn" type="button" id="vWithdraw" ${dis}>Withdraw everything</button>
+        </div>
+      </div></div>
+      ${botAgent ? '' : d.agent ? `<div class="section"><div class="wallet-card"><span class="label">Agent</span><p class="note" style="margin:0">This vault's agent isn't the VETO bot. Switch it to use the bot on Telegram.</p><button class="btn" type="button" id="vUseBot" ${dis}>Use the VETO bot as agent</button></div></div>` : ''}`;
+    bindCommon();
+    const vc = (sg) => c(S.vault, 'vault', sg);
+    $('#vCopy').addEventListener('click', () => {
+      navigator.clipboard.writeText(S.vault).then(() => A.toast('Vault address copied'), () => A.toast(S.vault));
+      const lv = document.getElementById('linkVault'); if (lv) lv.value = S.vault;
+    });
+    $('#vDeposit').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const amt = Number($('#vDepAmt').value);
+      if (!(amt > 0)) return A.toast('Enter an amount to deposit.');
+      send('Deposit', (sg) => c(d.tUSDG, 'token', sg).transfer(S.vault, parse(amt)));
+    });
+    $('#vRules').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const n = (id) => Number($(id).value);
+      const [ut, ud, st, sd, cd] = ['#rUsdTx', '#rUsdDay', '#rStkTx', '#rStkDay', '#rCool'].map(n);
+      if ([ut, ud, st, sd, cd].some((x) => !(x >= 0))) return A.toast('Every rule needs a number of 0 or more.');
+      if (ut > ud || st > sd) return A.toast('A per-trade cap can’t be bigger than the daily cap.');
+      const I = new E.Interface(ABI.vault);
+      const calls = [
+        I.encodeFunctionData('setLimit', [d.tUSDG, parse(ut), parse(ud)]),
+        ...STOCKS.map((s) => I.encodeFunctionData('setLimit', [d[`t${s}`], parse(st), parse(sd)])),
+        I.encodeFunctionData('setCooldown', [BigInt(Math.floor(cd))]),
+        I.encodeFunctionData('setApp', [d.TestRouter, $('#rApp').checked]),
+      ];
+      send('Save rules', (sg) => vc(sg).multicall(calls));
+    });
+    $('#vFreeze').addEventListener('click', () => send(v.frozen ? 'Unfreeze' : 'Freeze', (sg) => vc(sg).setFrozen(!v.frozen)));
+    $('#vWithdraw').addEventListener('click', () => {
+      const I = new E.Interface(ABI.vault);
+      const calls = ['USDG', ...STOCKS].filter((s) => v.bals[s] > 0n).map((s) => I.encodeFunctionData('withdraw', [d[`t${s}`], E.getAddress(A.W.address.toLowerCase()), v.bals[s]]));
+      if (!calls.length) return A.toast('Your vault is empty.');
+      send('Withdraw', (sg) => vc(sg).multicall(calls));
+    });
+    $('#vUseBot')?.addEventListener('click', () => send('Set agent', (sg) => vc(sg).setAgent(d.agent)));
+  }
+  const short = (a) => a.slice(0, 6) + '…' + a.slice(-4);
+
+  function bindCommon() {
+    $('#vFaucet')?.addEventListener('click', () => send('Faucet', (sg) => c(S.dep.tUSDG, 'token', sg).faucet()));
+  }
+
+  /* ---------- Live network stats (Sentinels tab) ---------- */
+  async function stats() {
+    const box = $('#liveStats');
+    if (!S.dep || !box) return;
+    try {
+      const d = S.dep;
+      const f = c(d.VetoVaultFactory, 'factory');
+      const count = Number(await f.vaultCount());
+      const n = Math.min(count, 200);
+      const vaults = await Promise.all(Array.from({ length: n }, (_, i) => f.allVaults(i)));
+      const per = await Promise.all(vaults.map(async (a) => {
+        const [m, b] = await Promise.all([c(a, 'vault').moveCount(), c(d.tUSDG, 'token').balanceOf(a)]);
+        return [m, b];
+      }));
+      const moves = per.reduce((s, [m]) => s + m, 0n);
+      const held = per.reduce((s, [, b]) => s + b, 0n);
+      const flagged = await c(d.SentinelRegistry, 'registry').flaggedCount();
+      box.hidden = false;
+      box.innerHTML = `<div class="status-row" style="margin-bottom:12px"><span class="label"><span class="live-dot"></span>Live on ${A.esc(A.CHAIN.name)}</span><span class="note">read from the contracts</span></div>
+        <div class="stats" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+          <div class="stat"><span class="label">Vaults</span><b>${count.toLocaleString()}</b><small>created</small></div>
+          <div class="stat"><span class="label">Moves signed</span><b>${moves.toLocaleString()}</b><small>through vault rules${count > n ? ` (first ${n} vaults)` : ''}</small></div>
+          <div class="stat"><span class="label">Under guard</span><b>${fmt(held, 0)}</b><small>test USDG in vaults</small></div>
+          <div class="stat"><span class="label">Flagged</span><b>${flagged.toLocaleString()}</b><small>addresses on the threat list</small></div>
+        </div>`;
+    } catch (e) {
+      box.hidden = true;
+    }
+  }
+
+  /* ---------- Threat check box uses the real registry when live ---------- */
+  function liveThreatCheck() {
+    const box = document.getElementById('checkAddr');
+    if (!box) return;
+    box.addEventListener('keydown', async (e) => {
+      if (e.key !== 'Enter' || !S.dep) return;
+      e.stopImmediatePropagation();
+      const v = box.value.trim();
+      if (!E.isAddress(v)) return A.toast('Paste a full 0x address (42 characters)');
+      try {
+        const bad = await c(S.dep.SentinelRegistry, 'registry').isFlagged(v);
+        A.toast(bad ? '⚠ Flagged: this address is on the VETO threat list.' : 'Not on the VETO threat list.');
+      } catch (err) { A.toast(errText(err)); }
+    }, true);
+  }
+
+  async function boot() {
+    if (!E) {
+      panel.innerHTML = '<div class="section note">The blockchain library didn’t load. Check your connection and reload.</div>';
+      return;
+    }
+    try {
+      const r = await fetch('deployments.json', { cache: 'no-store' });
+      if (r.ok) {
+        const d = await r.json();
+        if (d && d.chainId && E.isAddress(d.VetoVaultFactory || '')) S.dep = d;
+      }
+    } catch { /* not deployed yet */ }
+    if (S.dep) {
+      const net = A.NETS[S.dep.chainId] || { id: S.dep.chainId, hex: '0x' + Number(S.dep.chainId).toString(16), name: `Chain ${S.dep.chainId}`, rpc: S.dep.rpc, explorer: '' };
+      Object.assign(A.CHAIN, net, S.dep.rpc ? { rpc: S.dep.rpc } : {});
+      ro = new E.JsonRpcProvider(A.CHAIN.rpc, A.CHAIN.id, { staticNetwork: true });
+      const set = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+      set('netName', A.esc(A.CHAIN.name));
+      set('netId', String(A.CHAIN.id));
+      set('netRpc', A.esc(A.CHAIN.rpc.replace(/^https?:\/\//, '')));
+      set('netExplorer', A.CHAIN.explorer ? `<a href="${A.CHAIN.explorer}" target="_blank" rel="noopener">${A.esc(A.CHAIN.explorer.replace(/^https?:\/\//, ''))}</a>` : '—');
+      liveThreatCheck();
+      stats();
+      setInterval(() => { if (!document.hidden) { stats(); if (!S.busy) load(); } }, 30000);
+    }
+    window.addEventListener('veto:view', (e) => { if (e.detail === 'stake') stats(); });
+    let lastKey = '';
+    A.hooks.push(() => {
+      const key = `${A.W.address}|${A.W.chainId}`;
+      if (key !== lastKey) { lastKey = key; S.data = null; load(); }
+    });
+    load();
+  }
+  boot();
 })();
 </script>
 
