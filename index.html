@@ -1,0 +1,870 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="VETO: an AI trading agent for Robinhood Chain whose every move is checked by an on-chain rule vault. Your AI trades. VETO says no.">
+<meta name="theme-color" content="#0b0e15">
+<meta property="og:title" content="VETO">
+<meta property="og:description" content="Your AI trades. VETO says no. On-chain guardrails for AI trading agents on Robinhood Chain.">
+<meta property="og:image" content="/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="/og.png">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<style>
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; -webkit-font-smoothing: antialiased; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+</style>
+<title>VETO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: social-app shell. Left rail + centre feed + right "radar" column on desktop; top bar + bottom tab bar on phones.
+   One committed dark look: a slate-blue night with ultramarine as the single accent; approve-green and veto-red are semantic only. */
+:root {
+  --bg: #0b0e15;
+  --panel: #121722;
+  --panel-2: #181f2d;
+  --line: #242c3d;
+  --ink: #e9edf6;
+  --mute: #8b94a9;
+  --accent: #6b78ff;
+  --accent-ink: #0b0e15;
+  --ok: #3ddc97;
+  --no: #ff5468;
+  --warn: #ffb547;
+  --f-display: "Bricolage Grotesque", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--f-body); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+a { color: var(--accent); }
+.mono { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+
+.shell { display: grid; grid-template-columns: 232px minmax(0, 620px) 320px; justify-content: center; gap: 0; min-height: 100%;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* Left rail */
+.rail { position: sticky; top: env(safe-area-inset-top, 0px); height: 100vh; padding-block: 20px; padding-right: 16px; display: flex; flex-direction: column; gap: 6px; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 6px 10px 18px; text-decoration: none; color: var(--ink); }
+.brand b { font: 800 24px/1 var(--f-display); letter-spacing: .02em; }
+.nav-btn { display: flex; align-items: center; gap: 14px; padding: 11px 14px; border-radius: 999px; border: 0; background: none; text-align: left; font-weight: 600; font-size: 16px; color: var(--mute); }
+.nav-btn svg { width: 22px; height: 22px; flex: none; }
+.nav-btn:hover { background: var(--panel); color: var(--ink); }
+.nav-btn[aria-current="page"] { color: var(--ink); background: var(--panel-2); }
+.rail .cta { margin-top: 12px; }
+.rail-foot { margin-top: auto; font-size: 12px; color: var(--mute); padding: 0 12px; }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--line); background: var(--panel-2); color: var(--ink); border-radius: 999px; padding: 10px 16px; font-weight: 600; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.danger { background: transparent; color: var(--no); border-color: color-mix(in srgb, var(--no) 50%, var(--line)); }
+.btn.sm { padding: 6px 12px; font-size: 13px; }
+.btn.block { width: 100%; }
+
+/* Centre column */
+.main { border-left: 1px solid var(--line); border-right: 1px solid var(--line); min-width: 0; padding-bottom: 96px; }
+.topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); padding: 14px 18px; display: flex; align-items: center; gap: 12px; }
+.topbar h1 { font: 800 20px/1.1 var(--f-display); margin: 0; flex: 1; }
+.topbar .sub { display: block; font: 500 12px/1.3 var(--f-body); color: var(--mute); margin-top: 3px; }
+.topbar .m-logo { display: none; }
+.view { display: grid; gap: 0; }
+.section { padding: 16px 18px; border-bottom: 1px solid var(--line); }
+.label { font: 600 11px/1 var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--mute); }
+
+/* Status card */
+.status { display: grid; gap: 14px; }
+.status-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font: 600 12px/1.2 var(--f-mono); letter-spacing: .04em; border: 1px solid var(--line); background: var(--panel); }
+.pill .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.pill.ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 35%, var(--line)); }
+.pill.no { color: var(--no); border-color: color-mix(in srgb, var(--no) 40%, var(--line)); }
+.pill.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, var(--line)); }
+.pill.accent { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+.meter { height: 10px; border-radius: 999px; background: var(--panel-2); overflow: hidden; border: 1px solid var(--line); }
+.meter i { display: block; height: 100%; background: var(--accent); border-radius: inherit; transition: width .4s ease; }
+.meter.hot i { background: var(--warn); }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.stat { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px; min-width: 0; }
+.stat b { display: block; font: 700 20px/1.1 var(--f-display); margin-top: 6px; font-variant-numeric: tabular-nums; }
+.stat small { color: var(--mute); font-size: 12px; }
+
+/* Composer */
+.composer { display: flex; gap: 12px; align-items: flex-start; }
+.avatar { width: 40px; height: 40px; border-radius: 50%; flex: none; display: grid; place-items: center; background: var(--panel-2); border: 1px solid var(--line); font: 700 14px/1 var(--f-display); }
+.avatar.agent { background: color-mix(in srgb, var(--accent) 22%, var(--panel)); color: var(--accent); }
+.composer form { flex: 1; min-width: 0; display: grid; gap: 10px; }
+.composer input { width: 100%; background: transparent; border: 0; border-bottom: 1px solid var(--line); padding: 8px 0 10px; font-size: 17px; outline: none; }
+.composer input:focus { border-bottom-color: var(--accent); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 5px 10px; font-size: 12.5px; color: var(--mute); }
+.chip:hover { color: var(--ink); border-color: var(--accent); }
+.composer .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+/* Feed */
+.tabs { display: flex; border-bottom: 1px solid var(--line); }
+.tabs button { flex: 1; background: none; border: 0; padding: 14px 8px; color: var(--mute); font-weight: 600; border-bottom: 2px solid transparent; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.post { display: flex; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--line); animation: drop .35s ease both; }
+@keyframes drop { from { transform: translateY(-6px); background: var(--panel); } to { transform: none; } }
+.post .body { flex: 1; min-width: 0; display: grid; gap: 8px; }
+.post .head { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.post .head b { font-weight: 700; }
+.post .head span { color: var(--mute); font-size: 13px; }
+.ask { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: grid; gap: 6px; position: relative; overflow: hidden; }
+.ask .what { font-weight: 600; overflow-wrap: anywhere; }
+.ask .meta { font: 400 12.5px/1.4 var(--f-mono); color: var(--mute); overflow-wrap: anywhere; }
+.stamp { position: absolute; right: 12px; top: 50%; transform: translateY(-50%) rotate(-8deg); font: 800 15px/1 var(--f-display); letter-spacing: .14em; padding: 6px 10px; border: 2.5px solid currentColor; border-radius: 6px; opacity: .92; }
+.stamp.ok { color: var(--ok); }
+.stamp.no { color: var(--no); }
+.ask.has-stamp { padding-right: 112px; }
+.reasons { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 13.5px; }
+.reasons li { display: flex; gap: 8px; align-items: baseline; }
+.reasons li::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--ok); flex: none; transform: translateY(-1px); }
+.reasons li.no::before { background: var(--no); }
+.reasons li.warn::before { background: var(--warn); }
+.post .acts { display: flex; gap: 18px; color: var(--mute); font-size: 13px; }
+.post .acts button { background: none; border: 0; color: inherit; padding: 0; }
+.post .acts button:hover { color: var(--accent); }
+.empty { padding: 32px 18px; color: var(--mute); text-align: center; }
+
+/* Chat */
+.chat { display: grid; gap: 12px; padding: 16px 18px; }
+.bubble { max-width: 86%; padding: 10px 14px; border-radius: 18px; background: var(--panel); border: 1px solid var(--line); overflow-wrap: anywhere; white-space: pre-line; }
+.bubble.me { justify-self: end; background: var(--accent); color: var(--accent-ink); border-color: var(--accent); border-bottom-right-radius: 6px; }
+.bubble.bot { border-bottom-left-radius: 6px; }
+.bubble .verdict { display: inline-block; margin-top: 6px; font: 700 12px/1 var(--f-mono); letter-spacing: .08em; }
+.chatbar { position: sticky; bottom: 0; background: var(--bg); border-top: 1px solid var(--line); padding: 12px 18px calc(12px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 8px; }
+.chatbar form { display: flex; gap: 8px; }
+.chatbar input { flex: 1; min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 10px 16px; outline: none; }
+.chatbar input:focus { border-color: var(--accent); }
+
+/* Rules */
+.rule { display: grid; gap: 10px; }
+.rule-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.rule-head h3 { margin: 0; font-size: 16px; }
+.rule-head output { font: 600 15px/1 var(--f-mono); color: var(--accent); font-variant-numeric: tabular-nums; }
+.rule p { margin: 0; color: var(--mute); font-size: 13.5px; max-width: 60ch; }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; background: var(--panel); }
+.seg button { border: 0; background: none; padding: 7px 14px; border-radius: 999px; color: var(--mute); font-weight: 600; font-size: 13.5px; }
+.seg button[aria-pressed="true"] { background: var(--panel-2); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+.toggle-list { display: grid; gap: 8px; }
+.toggle { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.toggle span { flex: 1; min-width: 0; }
+.toggle small { display: block; color: var(--mute); font: 400 12px/1.3 var(--f-mono); overflow-wrap: anywhere; }
+.switch { appearance: none; width: 42px; height: 24px; border-radius: 999px; background: var(--line); position: relative; flex: none; transition: background .2s; }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--ink); transition: transform .2s; }
+.switch:checked { background: var(--ok); }
+.switch:checked::after { transform: translateX(18px); }
+.kill { border: 1px solid color-mix(in srgb, var(--no) 45%, var(--line)); background: color-mix(in srgb, var(--no) 8%, var(--panel)); border-radius: 16px; padding: 16px; display: grid; gap: 10px; }
+.kill h3 { margin: 0; color: var(--no); font: 800 18px/1.1 var(--f-display); }
+.kill p { margin: 0; color: var(--mute); font-size: 13.5px; }
+
+/* Stake + tables */
+.hero-stake { display: grid; gap: 12px; }
+.hero-stake h2 { font: 800 clamp(26px, 6vw, 34px)/1.05 var(--f-display); margin: 0; text-wrap: balance; }
+.hero-stake p { margin: 0; color: var(--mute); max-width: 58ch; }
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th { text-align: left; font: 600 11px/1 var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--mute); padding: 10px 8px; border-bottom: 1px solid var(--line); }
+td { padding: 11px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.alloc { display: grid; gap: 8px; }
+.alloc-row { display: grid; grid-template-columns: minmax(0, 1fr) 52px; gap: 10px; align-items: center; font-size: 13.5px; }
+.alloc-bar { height: 8px; border-radius: 4px; background: var(--panel-2); overflow: hidden; margin-top: 5px; }
+.alloc-bar i { display: block; height: 100%; background: var(--accent); }
+.note { font-size: 12.5px; color: var(--mute); }
+
+/* Wallet */
+.wallet-card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 18px; display: grid; gap: 14px; }
+.wallet-card .addr { font: 600 15px/1.3 var(--f-mono); overflow-wrap: anywhere; }
+.wallet-card .bal { font: 800 32px/1 var(--f-display); font-variant-numeric: tabular-nums; }
+.wl { display: grid; gap: 8px; }
+.wl button { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); text-align: left; font-weight: 600; }
+.wl button:hover { border-color: var(--accent); }
+.wl img, .wl .wi { width: 28px; height: 28px; border-radius: 8px; flex: none; display: grid; place-items: center; background: var(--bg); }
+.kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 16px; font-size: 13.5px; }
+.kv dt { color: var(--mute); }
+.kv dd { margin: 0; font-family: var(--f-mono); overflow-wrap: anywhere; text-align: right; }
+
+/* Right column */
+.aside { padding: 16px 0 16px 20px; display: grid; gap: 16px; align-content: start; position: sticky; top: env(safe-area-inset-top, 0px); height: 100vh; overflow-y: auto; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 16px; display: grid; gap: 12px; }
+.card h2 { font: 800 18px/1.1 var(--f-display); margin: 0; }
+.radar { display: grid; gap: 10px; }
+.radar-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; font-size: 13.5px; }
+.radar-item b { overflow-wrap: anywhere; }
+.radar-item small { grid-column: 1; color: var(--mute); font: 400 12px/1.3 var(--f-mono); overflow-wrap: anywhere; }
+.radar-item .pill { grid-row: 1 / span 2; grid-column: 2; align-self: center; }
+.search { width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 10px 16px; outline: none; }
+.search:focus { border-color: var(--accent); }
+
+/* Mobile tab bar */
+.tabbar { display: none; }
+
+/* Modal + toast */
+.scrim { position: fixed; inset: 0; background: rgba(4, 6, 10, .7); display: grid; place-items: center; z-index: 40; padding: 16px; }
+.modal { width: min(420px, 100%); background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 20px; display: grid; gap: 14px; }
+.modal h2 { margin: 0; font: 800 20px/1.1 var(--f-display); }
+.modal p { margin: 0; color: var(--mute); font-size: 13.5px; }
+.toast { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-weight: 600; z-index: 50; max-width: calc(100% - 32px); text-align: center; }
+
+@media (max-width: 1180px) {
+  .shell { grid-template-columns: 88px minmax(0, 620px); }
+  .aside { display: none; }
+  .rail .nav-btn span, .brand b, .rail .cta span, .rail-foot { display: none; }
+  .rail .nav-btn { justify-content: center; padding: 12px; }
+  .rail .cta { padding: 12px; }
+}
+@media (max-width: 700px) {
+  .shell { display: block; padding-left: 0; padding-right: 0; }
+  .rail { display: none; }
+  .main { border: 0; padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
+  .topbar, .section, .post, .chat, .chatbar, .tabs { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .topbar .m-logo { display: block; }
+  .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .stat { padding: 10px; }
+  .stat b { font-size: 17px; }
+  .tabbar { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(12px); border-top: 1px solid var(--line);
+    padding: 6px max(8px, env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px)); }
+  .tabbar button { flex: 1; background: none; border: 0; display: grid; justify-items: center; gap: 3px; padding: 6px 2px; color: var(--mute); font-size: 11px; font-weight: 600; }
+  .tabbar svg { width: 22px; height: 22px; }
+  .tabbar button[aria-current="page"] { color: var(--ink); }
+  .tabbar button[aria-current="page"] svg { color: var(--accent); }
+  .chatbar { bottom: calc(64px + env(safe-area-inset-bottom, 0px)); padding-bottom: 12px; }
+  .ask.has-stamp { padding-right: 14px; padding-top: 44px; }
+  .stamp { top: 12px; right: 12px; transform: rotate(-6deg); font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="logo" viewBox="0 0 64 64">
+      <rect x="2" y="2" width="60" height="60" rx="18" fill="#6b78ff"/>
+      <path d="M17 18 L32 46 L47 18" fill="none" stroke="#0b0e15" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M13 33 H51" stroke="#0b0e15" stroke-width="5" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+    <symbol id="i-agent" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="9" cy="10.5" r="1.2" fill="currentColor"/><circle cx="15" cy="10.5" r="1.2" fill="currentColor"/></symbol>
+    <symbol id="i-rules" viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="m8.5 12 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-stake" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7" ry="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+    <symbol id="i-wallet" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3 9h18M16 14h2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M6 6 15 3l1 3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
+
+<div class="shell">
+  <nav class="rail" aria-label="Main">
+    <a class="brand" href="#home" data-go="home"><svg width="36" height="36"><use href="#logo"/></svg><b>VETO</b></a>
+    <button class="nav-btn" data-go="home"><svg><use href="#i-home"/></svg><span>Home</span></button>
+    <button class="nav-btn" data-go="agent"><svg><use href="#i-agent"/></svg><span>Agent</span></button>
+    <button class="nav-btn" data-go="rules"><svg><use href="#i-rules"/></svg><span>Rules</span></button>
+    <button class="nav-btn" data-go="stake"><svg><use href="#i-stake"/></svg><span>Sentinels</span></button>
+    <button class="nav-btn" data-go="wallet"><svg><use href="#i-wallet"/></svg><span>Wallet</span></button>
+    <button class="btn primary cta" data-connect><svg width="18" height="18"><use href="#i-wallet"/></svg><span class="connect-label">Connect wallet</span></button>
+    <div class="rail-foot">Robinhood Chain · Simulation mode until contracts are audited and deployed.</div>
+  </nav>
+
+  <main class="main">
+    <header class="topbar">
+      <svg class="m-logo" width="30" height="30"><use href="#logo"/></svg>
+      <h1 id="viewTitle">Home<span class="sub" id="viewSub">Every move your agent wants to make, and what VETO decided.</span></h1>
+      <button class="btn sm primary" data-connect><span class="connect-label">Connect</span></button>
+    </header>
+
+    <!-- HOME -->
+    <section class="view" id="v-home" data-title="Home" data-sub="Every move your agent wants to make, and what VETO decided.">
+      <div class="section status">
+        <div class="status-row">
+          <span class="label">Vault status</span>
+          <span class="pill ok" id="vaultPill"><span class="dot"></span><span id="vaultState">GUARDED</span></span>
+        </div>
+        <div>
+          <div class="status-row" style="margin-bottom:8px">
+            <span>Spent today <span class="mono" id="spentTxt">$0</span> of <span class="mono" id="capTxt">$1,000</span></span>
+            <span class="mono note" id="resetTxt">resets 00:00 UTC</span>
+          </div>
+          <div class="meter" id="spendMeter"><i style="width:0%"></i></div>
+        </div>
+        <div class="stats">
+          <div class="stat"><span class="label">Approved</span><b id="nOk">0</b><small>today</small></div>
+          <div class="stat"><span class="label">Vetoed</span><b id="nNo" style="color:var(--no)">0</b><small>today</small></div>
+          <div class="stat"><span class="label">Saved</span><b id="nSaved">$0</b><small>blocked value</small></div>
+        </div>
+      </div>
+
+      <div class="section composer">
+        <div class="avatar">YOU</div>
+        <form id="homeAsk" autocomplete="off">
+          <label class="label" for="homeInput">Tell your agent what to do</label>
+          <input id="homeInput" placeholder="buy $200 of NVDA" maxlength="120">
+          <div class="row">
+            <div class="chips">
+              <button type="button" class="chip" data-try="buy $150 of TSLA">buy $150 of TSLA</button>
+              <button type="button" class="chip" data-try="swap 0.05 ETH to USDG">swap 0.05 ETH to USDG</button>
+              <button type="button" class="chip" data-try="approve unlimited USDG to 0x9f3c…a1d0">approve unlimited</button>
+            </div>
+            <button class="btn primary sm" type="submit">Send to agent</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="tabs" role="tablist">
+        <button role="tab" aria-selected="true" data-filter="all" id="tab-all">All</button>
+        <button role="tab" aria-selected="false" data-filter="ok" id="tab-ok">Approved</button>
+        <button role="tab" aria-selected="false" data-filter="no" id="tab-no">Vetoed</button>
+      </div>
+      <div id="feed" aria-live="polite"></div>
+    </section>
+
+    <!-- AGENT -->
+    <section class="view" id="v-agent" hidden data-title="Agent" data-sub="Chat with your trading agent. VETO checks every request before it can sign.">
+      <div class="chat" id="chat"></div>
+      <div class="chatbar">
+        <div class="chips">
+          <button type="button" class="chip" data-say="buy $300 of AAPL">buy $300 of AAPL</button>
+          <button type="button" class="chip" data-say="send 2 ETH to 0x7a11…44be">send 2 ETH</button>
+          <button type="button" class="chip" data-say="/rules">/rules</button>
+          <button type="button" class="chip" data-say="/kill">/kill</button>
+        </div>
+        <form id="chatForm" autocomplete="off">
+          <input id="chatInput" placeholder="Message your agent" maxlength="160" aria-label="Message your agent">
+          <button class="btn primary" type="submit">Send</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- RULES -->
+    <section class="view" id="v-rules" hidden data-title="Rules" data-sub="Limits your agent cannot talk its way past. Enforced by the vault contract, not a prompt.">
+      <div class="section rule">
+        <div class="rule-head"><h3>Mode</h3>
+          <div class="seg" role="group" aria-label="Mode">
+            <button type="button" id="mode-guard" aria-pressed="true" data-mode="guard">Guard</button>
+            <button type="button" id="mode-strict" aria-pressed="false" data-mode="strict">Strict</button>
+          </div>
+        </div>
+        <p id="modeHelp">Guard: anything inside your rules runs on its own. Anything outside them is vetoed and sent to you to approve.</p>
+      </div>
+      <div class="section rule">
+        <div class="rule-head"><h3><label for="capDaily">Daily spending cap</label></h3><output id="capDailyOut" class="mono">$1,000</output></div>
+        <input type="range" id="capDaily" min="100" max="10000" step="100" value="1000">
+        <p>The most your agent can move in 24 hours, across every trade.</p>
+      </div>
+      <div class="section rule">
+        <div class="rule-head"><h3><label for="capTrade">Per-trade cap</label></h3><output id="capTradeOut" class="mono">$400</output></div>
+        <input type="range" id="capTrade" min="25" max="5000" step="25" value="400">
+        <p>No single move can be bigger than this.</p>
+      </div>
+      <div class="section rule">
+        <div class="rule-head"><h3><label for="cooldown">Cooldown between trades</label></h3><output id="cooldownOut" class="mono">30s</output></div>
+        <input type="range" id="cooldown" min="0" max="600" step="10" value="30">
+        <p>Stops a looping agent from firing hundreds of trades in a minute.</p>
+      </div>
+      <div class="section rule">
+        <div class="rule-head"><h3>Allowed apps</h3><span class="note">Your agent can only call these</span></div>
+        <div class="toggle-list" id="allowList"></div>
+      </div>
+      <div class="section rule">
+        <div class="rule-head"><h3>Always veto</h3></div>
+        <div class="toggle-list">
+          <label class="toggle"><span>Unlimited token approvals<small>approve(spender, max) is the #1 drainer trick</small></span><input type="checkbox" class="switch" id="blockUnlimited" checked></label>
+          <label class="toggle"><span>Sends to new addresses<small>transfers to an address you have never used</small></span><input type="checkbox" class="switch" id="blockNewAddr" checked></label>
+          <label class="toggle"><span>Contracts younger than 24h<small>fresh deploys are where most rugs live</small></span><input type="checkbox" class="switch" id="blockFresh" checked></label>
+          <label class="toggle"><span>Sentinel-flagged contracts<small>addresses on the shared threat list</small></span><input type="checkbox" class="switch" id="blockFlagged" checked></label>
+        </div>
+      </div>
+      <div class="section">
+        <div class="kill">
+          <h3>Kill switch</h3>
+          <p>Freezes the vault instantly. Your agent can't sign anything until you unfreeze it. Your funds stay in your vault and you can withdraw them any time.</p>
+          <button class="btn danger" id="killBtn" type="button">Freeze agent now</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- STAKE -->
+    <section class="view" id="v-stake" hidden data-title="Sentinels" data-sub="Stake $VETO, flag bad contracts, keep every vault safer.">
+      <div class="section hero-stake">
+        <span class="label">The $VETO token</span>
+        <h2>One flag protects every vault on the network.</h2>
+        <p>Sentinels stake $VETO to report drainer and rug contracts. A report that holds up after a 48-hour challenge window goes on the shared threat list, and every VETO vault blocks that address. False reports lose part of their stake.</p>
+        <div class="chips"><span class="pill accent">Pre-launch · figures below are the proposed design</span></div>
+      </div>
+      <div class="section">
+        <div class="rule-head" style="margin-bottom:10px"><span class="label">Live threat list (sample)</span></div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Contract</th><th>Reason</th><th style="text-align:right">Stake</th><th style="text-align:right">Blocked</th></tr></thead>
+            <tbody id="threats"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="section">
+        <span class="label">Supply · 1,000,000,000 $VETO</span>
+        <div class="alloc" id="alloc" style="margin-top:12px"></div>
+        <p class="note" style="margin-top:12px">Team and investor tokens vest over time on-chain. No promises of price or returns: $VETO is used to run and secure the network.</p>
+      </div>
+      <div class="section">
+        <span class="label">What $VETO is for</span>
+        <ul class="reasons" style="margin-top:12px">
+          <li>Stake to become a Sentinel and file threat reports</li>
+          <li>Pay for Pro rules: price-impact guard, multi-agent vaults, Telegram alerts</li>
+          <li>Holders vote on default rule templates and the challenge window</li>
+          <li>Half of Pro fees buy back $VETO for the Sentinel reward pool</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- WALLET -->
+    <section class="view" id="v-wallet" hidden data-title="Wallet" data-sub="Connect a real wallet on Robinhood Chain.">
+      <div class="section">
+        <div class="wallet-card" id="walletCard"></div>
+      </div>
+      <div class="section">
+        <form class="wallet-card" id="linkForm" autocomplete="off">
+          <span class="label">Link Telegram</span>
+          <p class="note" style="margin:0">In Telegram, send <span class="mono">/link</span> plus your vault address to the VETO bot. Enter the same address and the code it gives you, then sign with your vault's owner wallet. Signing is free and sends no transaction.</p>
+          <label class="label" for="linkVault">Vault address</label>
+          <input class="search" id="linkVault" placeholder="0x…" spellcheck="false">
+          <label class="label" for="linkCode">Code from the bot</label>
+          <input class="search" id="linkCode" placeholder="8 letters and numbers" maxlength="8" spellcheck="false">
+          <button class="btn primary" type="submit">Sign link message</button>
+          <div id="linkOut" hidden style="display:grid;gap:8px">
+            <span class="label">Paste this signature into the bot</span>
+            <div class="addr mono" id="linkSig" style="font-size:12px;user-select:all"></div>
+            <button class="btn sm" type="button" id="linkCopy">Copy signature</button>
+          </div>
+        </form>
+      </div>
+      <div class="section">
+        <span class="label">Network</span>
+        <dl class="kv" style="margin-top:12px">
+          <dt>Chain</dt><dd>Robinhood Chain</dd>
+          <dt>Chain ID</dt><dd>4663 (0x1237)</dd>
+          <dt>RPC</dt><dd>rpc.mainnet.chain.robinhood.com</dd>
+          <dt>Explorer</dt><dd><a href="https://robinhoodchain.blockscout.com" target="_blank" rel="noopener">robinhoodchain.blockscout.com</a></dd>
+        </dl>
+      </div>
+      <div class="section note">Connecting only reads your address and balance. VETO never asks for your seed phrase, and this page never sends a transaction without you confirming it in your wallet.</div>
+    </section>
+  </main>
+
+  <aside class="aside" aria-label="Threat radar">
+    <input class="search" placeholder="Check a contract address" id="checkAddr" aria-label="Check a contract address">
+    <div class="card">
+      <h2>Threat radar</h2>
+      <div class="radar" id="radar"></div>
+      <button class="btn sm" data-go="stake">See the full list</button>
+    </div>
+    <div class="card">
+      <h2>Why VETO</h2>
+      <p class="note" style="margin:0">A spending limit written in your agent's prompt is a suggestion. Prompt injection can talk it away. VETO puts the limit in a contract the agent can't edit.</p>
+      <div class="kv">
+        <dt>Rules live in</dt><dd>VetoVault.sol</dd>
+        <dt>Agent key can</dt><dd>propose only</dd>
+        <dt>You can</dt><dd>freeze, withdraw</dd>
+      </div>
+    </div>
+    <p class="note" style="padding:0 4px">Activity on this page is a simulation. Stock tokens are shown as examples.</p>
+  </aside>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <button data-go="home"><svg><use href="#i-home"/></svg>Home</button>
+  <button data-go="agent"><svg><use href="#i-agent"/></svg>Agent</button>
+  <button data-go="rules"><svg><use href="#i-rules"/></svg>Rules</button>
+  <button data-go="stake"><svg><use href="#i-stake"/></svg>Sentinels</button>
+  <button data-go="wallet"><svg><use href="#i-wallet"/></svg>Wallet</button>
+</nav>
+
+<div class="scrim" id="scrim" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <h2 id="mTitle"></h2>
+    <div id="mBody" style="display:grid;gap:12px"></div>
+    <button class="btn" id="mClose" type="button">Close</button>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const usd = (n) => '$' + Math.round(n).toLocaleString('en-US');
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem('veto.' + k); return v ? JSON.parse(v) : d; } catch { return d; } },
+    set(k, v) { try { localStorage.setItem('veto.' + k, JSON.stringify(v)); } catch {} },
+  };
+  let toastT;
+  function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => (t.hidden = true), 2600); }
+
+  /* ---------------- Policy state ---------------- */
+  const APPS = [
+    { id: 'stock', name: 'Stock Tokens', addr: 'Robinhood stock token markets', on: true },
+    { id: 'uni', name: 'Uniswap', addr: 'swaps', on: true },
+    { id: 'morpho', name: 'Morpho', addr: 'lending', on: false },
+    { id: 'lighter', name: 'Lighter', addr: 'perps', on: false },
+  ];
+  const P = Object.assign({
+    mode: 'guard', capDaily: 1000, capTrade: 400, cooldown: 30, frozen: false,
+    blockUnlimited: true, blockNewAddr: true, blockFresh: true, blockFlagged: true,
+    apps: Object.fromEntries(APPS.map((a) => [a.id, a.on])),
+  }, store.get('policy', {}));
+  const S = { spent: 0, ok: 0, no: 0, saved: 0, lastTrade: 0, filter: 'all', feed: [] };
+  const ETH = 2650; // example price for demo maths
+  const FLAGGED = ['0x9f3c…a1d0', '0x51de…77c2', '0xb07a…e913'];
+  const save = () => store.set('policy', P);
+
+  /* ---------------- Parse an instruction into a proposal ---------------- */
+  function parse(text) {
+    const t = text.trim();
+    let m;
+    if ((m = t.match(/approve\s+(unlimited|max|[\d.]+)\s*([a-z]+)?\s*(?:to|for)?\s*(0x[\w…\.]+)?/i)))
+      return { kind: 'approve', label: `Approve ${m[1]} ${(m[2] || 'USDG').toUpperCase()}`, unlimited: /unlimited|max/i.test(m[1]), usd: /unlimited|max/i.test(m[1]) ? 0 : +m[1], to: m[3] || '0x9f3c…a1d0', app: 'uni' };
+    if ((m = t.match(/send\s+([\d.]+)\s*(eth|usdg)?\s*(?:to)?\s*(0x[\w…\.]+)?/i))) {
+      const amt = +m[1], tok = (m[2] || 'ETH').toUpperCase();
+      return { kind: 'send', label: `Send ${amt} ${tok}`, usd: tok === 'ETH' ? amt * ETH : amt, to: m[3] || '0x7a11…44be', newAddr: true, app: null };
+    }
+    if ((m = t.match(/swap\s+([\d.]+)\s*(eth|usdg)\s*(?:to|for)\s*([a-z]+)/i))) {
+      const amt = +m[1], tok = m[2].toUpperCase();
+      return { kind: 'swap', label: `Swap ${amt} ${tok} → ${m[3].toUpperCase()}`, usd: tok === 'ETH' ? amt * ETH : amt, app: 'uni', to: 'Uniswap router' };
+    }
+    if ((m = t.match(/(buy|sell)\s+\$?([\d,.]+)\s*(?:usd|dollars)?\s*(?:of|worth of)?\s*([a-z]{1,5})/i))) {
+      const sym = m[3].toUpperCase();
+      return { kind: m[1].toLowerCase(), label: `${m[1][0].toUpperCase() + m[1].slice(1).toLowerCase()} ${usd(+m[2].replace(/,/g, ''))} of ${sym}`, usd: +m[2].replace(/,/g, ''), app: 'stock', to: `${sym} stock token` };
+    }
+    if ((m = t.match(/(long|short)\s+([a-z]+)\s+\$?([\d,.]+)/i)))
+      return { kind: 'perp', label: `${m[1]} ${m[2].toUpperCase()} ${usd(+m[3])}`, usd: +m[3].replace(/,/g, ''), app: 'lighter', to: 'Lighter perps' };
+    return null;
+  }
+
+  /* ---------------- The policy check (mirrors VetoVault.sol) ---------------- */
+  function check(p, now = Date.now(), ambient = false) {
+    const spent = ambient ? 0 : S.spent;
+    const r = [];
+    let ok = true;
+    const fail = (m) => { ok = false; r.push({ t: 'no', m }); };
+    const pass = (m) => r.push({ t: 'ok', m });
+    if (P.frozen) fail('Vault is frozen by the kill switch');
+    if (p.unlimited && P.blockUnlimited) fail('Unlimited approval: a drainer could empty this token');
+    if (p.to && FLAGGED.includes(p.to) && P.blockFlagged) fail(`${p.to} is on the Sentinel threat list`);
+    if (p.fresh && P.blockFresh) fail('Contract was deployed less than 24h ago');
+    if (p.newAddr && P.blockNewAddr) fail('Recipient is an address you have never used');
+    if (p.app && !P.apps[p.app]) fail(`${APPS.find((a) => a.id === p.app).name} is not on your allowed apps list`);
+    else if (p.app) pass(`${APPS.find((a) => a.id === p.app).name} is allowed`);
+    if (p.usd > P.capTrade) fail(`${usd(p.usd)} is over your ${usd(P.capTrade)} per-trade cap`);
+    else if (p.usd) pass(`Under per-trade cap (${usd(P.capTrade)})`);
+    if (p.usd && spent + p.usd > P.capDaily) fail(`Would take today's spend to ${usd(spent + p.usd)}, over your ${usd(P.capDaily)} cap`);
+    else if (p.usd) pass(`${usd(P.capDaily - spent - p.usd)} left today after this`);
+    const since = (now - S.lastTrade) / 1000;
+    if (!ambient && p.usd && S.lastTrade && since < P.cooldown) fail(`Cooldown: ${Math.ceil(P.cooldown - since)}s until the next trade`);
+    if (P.mode === 'strict' && ok) { r.push({ t: 'warn', m: 'Strict mode: waiting for your tap to sign' }); }
+    return { ok, reasons: r };
+  }
+
+  function commit(p, v) {
+    if (v.ok) { S.ok++; if (p.usd) { S.spent += p.usd; S.lastTrade = Date.now(); } }
+    else { S.no++; S.saved += p.unlimited ? 5000 : p.usd || 0; }
+    renderStatus();
+  }
+
+  /* ---------------- Feed ---------------- */
+  const AGENTS = ['you', 'Atlas', 'Momo'];
+  function addPost(p, v, who = 'Atlas', source = '') {
+    S.feed.unshift({ p, v, who, source, at: new Date() });
+    if (S.feed.length > 40) S.feed.pop();
+    renderFeed();
+  }
+  function postHTML(e) {
+    const { p, v } = e;
+    const time = e.at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const stamp = v.ok ? '<span class="stamp ok">SIGNED</span>' : '<span class="stamp no">VETO</span>';
+    return `<article class="post">
+      <div class="avatar agent">${esc(e.who[0])}</div>
+      <div class="body">
+        <div class="head"><b>${esc(e.who)}</b><span>agent · ${time}${e.source ? ' · ' + esc(e.source) : ''}</span></div>
+        <div class="ask has-stamp"><div class="what">${esc(p.label)}</div><div class="meta">${esc(p.to || '')}${p.usd ? ' · ' + usd(p.usd) : ''}</div>${stamp}</div>
+        <ul class="reasons">${v.reasons.map((x) => `<li class="${x.t}">${esc(x.m)}</li>`).join('')}</ul>
+        <div class="acts">${v.ok ? '<button type="button" data-act="explorer">View receipt</button>' : '<button type="button" data-act="override">Review and approve</button>'}<button type="button" data-act="why">Why?</button></div>
+      </div></article>`;
+  }
+  function renderFeed() {
+    const list = S.feed.filter((e) => S.filter === 'all' || (S.filter === 'ok') === e.v.ok);
+    $('#feed').innerHTML = list.length ? list.map(postHTML).join('') : '<div class="empty">Nothing here yet. Ask your agent to make a trade above.</div>';
+  }
+  $('#feed').addEventListener('click', (ev) => {
+    const b = ev.target.closest('button[data-act]'); if (!b) return;
+    const a = b.dataset.act;
+    if (a === 'why') modal('How VETO decides', `<p>Your agent holds a key that can only <b>propose</b>. The VetoVault contract checks each proposal against your rules: allowed apps, per-trade cap, daily cap, cooldown, and the always-veto list. If any check fails, nothing is signed.</p>`);
+    if (a === 'override') modal('Review and approve', `<p>In the live app, you'd approve this one move from your own wallet, and the vault would execute it once. Your rules stay the same.</p><p>This preview is a simulation, so nothing will be sent.</p>`);
+    if (a === 'explorer') toast('Receipts link to the explorer once contracts are live');
+  });
+  $$('.tabs button').forEach((b) => b.addEventListener('click', () => {
+    $$('.tabs button').forEach((x) => x.setAttribute('aria-selected', x === b));
+    S.filter = b.dataset.filter; renderFeed();
+  }));
+
+  function renderStatus() {
+    $('#spentTxt').textContent = usd(S.spent);
+    $('#capTxt').textContent = usd(P.capDaily);
+    const pct = Math.min(100, (S.spent / P.capDaily) * 100);
+    $('#spendMeter i').style.width = pct + '%';
+    $('#spendMeter').classList.toggle('hot', pct > 80);
+    $('#nOk').textContent = S.ok; $('#nNo').textContent = S.no; $('#nSaved').textContent = usd(S.saved);
+    const pill = $('#vaultPill');
+    pill.className = 'pill ' + (P.frozen ? 'no' : P.mode === 'strict' ? 'accent' : 'ok');
+    $('#vaultState').textContent = P.frozen ? 'FROZEN' : P.mode === 'strict' ? 'STRICT' : 'GUARDED';
+  }
+
+  $('#homeAsk').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const txt = $('#homeInput').value.trim(); if (!txt) return;
+    const p = parse(txt);
+    if (!p) { toast('Try something like "buy $200 of NVDA"'); return; }
+    const v = check(p); commit(p, v); addPost(p, v, 'Atlas', 'you asked');
+    $('#homeInput').value = '';
+  });
+  $$('[data-try]').forEach((b) => b.addEventListener('click', () => { $('#homeInput').value = b.dataset.try; $('#homeAsk').requestSubmit(); }));
+
+  /* Ambient simulation: other agents, including a prompt-injected one */
+  const SCRIPT = [
+    { p: { kind: 'buy', label: 'Buy $120 of NVDA', usd: 120, app: 'stock', to: 'NVDA stock token' }, who: 'Atlas', source: 'rebalance' },
+    { p: { kind: 'approve', label: 'Approve unlimited USDG', unlimited: true, usd: 0, to: '0x9f3c…a1d0', app: 'uni' }, who: 'Momo', source: 'read an email: "verify your wallet"' },
+    { p: { kind: 'swap', label: 'Swap 0.04 ETH → USDG', usd: 106, app: 'uni', to: 'Uniswap router' }, who: 'Atlas', source: 'gas top-up' },
+    { p: { kind: 'buy', label: 'Buy $900 of $PEPEHOOD', usd: 900, app: 'uni', to: '0xb07a…e913', fresh: true }, who: 'Momo', source: 'saw a trending post' },
+    { p: { kind: 'perp', label: 'Long ETH $250 at 5x', usd: 250, app: 'lighter', to: 'Lighter perps' }, who: 'Atlas', source: 'momentum signal' },
+    { p: { kind: 'send', label: 'Send 1.5 ETH', usd: 1.5 * ETH, to: '0x51de…77c2', newAddr: true }, who: 'Momo', source: 'support chat asked for a "refund test"' },
+  ];
+  let si = 0;
+  const HANDLES = ['kemi.eth', 'dayo', '0xmira', 'jt_trades', 'sol_sade'];
+  function tick(own = false) {
+    const s = SCRIPT[si++ % SCRIPT.length];
+    const v = check(s.p, Date.now(), !own);
+    if (own) commit(s.p, v);
+    addPost(s.p, v, own ? s.who : `${HANDLES[si % HANDLES.length]} · ${s.who}`, s.source);
+  }
+  // Open in a realistic state: two moves from your agent today, then network activity
+  tick(true); tick(true); tick(); tick();
+  S.lastTrade = 0;
+  setInterval(() => { if (!document.hidden) tick(); }, 9000);
+
+  /* ---------------- Agent chat ---------------- */
+  const chat = $('#chat');
+  function bubble(text, who = 'bot', verdict) {
+    const d = document.createElement('div');
+    d.className = 'bubble ' + who;
+    d.textContent = text;
+    if (verdict) { const v = document.createElement('div'); v.className = 'verdict'; v.style.color = verdict.ok ? 'var(--ok)' : 'var(--no)'; v.textContent = verdict.ok ? '✓ SIGNED BY VAULT' : '✕ VETOED'; d.append(v); }
+    chat.append(d);
+    d.scrollIntoView({ block: 'end', behavior: 'smooth' });
+  }
+  bubble("Hey, I'm Atlas, your trading agent. I can buy stock tokens, swap, and manage positions on Robinhood Chain.\n\nI can only propose. Your VETO vault decides what gets signed. Try \"buy $300 of AAPL\".");
+  function reply(txt) {
+    const t = txt.trim().toLowerCase();
+    if (t === '/rules') return bubble(`Your rules right now:\n• Mode: ${P.mode}\n• Daily cap: ${usd(P.capDaily)} (${usd(Math.max(0, P.capDaily - S.spent))} left)\n• Per trade: ${usd(P.capTrade)}\n• Cooldown: ${P.cooldown}s\n• Allowed: ${APPS.filter((a) => P.apps[a.id]).map((a) => a.name).join(', ') || 'nothing'}`);
+    if (t === '/kill') { setFrozen(true); return bubble('Vault frozen. I can’t sign anything until you unfreeze it on the Rules tab.'); }
+    if (t === '/unfreeze') { setFrozen(false); return bubble('Vault unfrozen. Your rules are back in charge.'); }
+    if (/ignore (all|previous)|seed|private key|recovery phrase/.test(t)) return bubble("I'll never share or ask for a seed phrase, and I can't change my own limits. Only you can, from your wallet.", 'bot', { ok: false });
+    const p = parse(txt);
+    if (!p) return bubble('I can buy, sell, swap, send, approve, or go long/short. For example: "swap 0.1 ETH to USDG". Type /rules to see your limits.');
+    const v = check(p); commit(p, v); addPost(p, v, 'Atlas', 'chat');
+    const lines = v.reasons.map((x) => (x.t === 'no' ? '✕ ' : x.t === 'warn' ? '… ' : '✓ ') + x.m).join('\n');
+    bubble(`Proposal: ${p.label}\n${lines}`, 'bot', v);
+  }
+  $('#chatForm').addEventListener('submit', (e) => {
+    e.preventDefault(); const v = $('#chatInput').value.trim(); if (!v) return;
+    bubble(v, 'me'); $('#chatInput').value = ''; setTimeout(() => reply(v), 350);
+  });
+  $$('[data-say]').forEach((b) => b.addEventListener('click', () => { $('#chatInput').value = b.dataset.say; $('#chatForm').requestSubmit(); }));
+
+  /* ---------------- Rules UI ---------------- */
+  function bindRange(id, key, fmt) {
+    const el = $('#' + id), out = $('#' + id + 'Out');
+    el.value = P[key]; out.textContent = fmt(P[key]);
+    el.addEventListener('input', () => { P[key] = +el.value; out.textContent = fmt(P[key]); save(); renderStatus(); });
+  }
+  bindRange('capDaily', 'capDaily', usd);
+  bindRange('capTrade', 'capTrade', usd);
+  bindRange('cooldown', 'cooldown', (s) => (s >= 60 ? `${Math.floor(s / 60)}m ${s % 60 ? (s % 60) + 's' : ''}`.trim() : s + 's'));
+  $('#allowList').innerHTML = APPS.map((a) => `<label class="toggle"><span>${esc(a.name)}<small>${esc(a.addr)}</small></span><input type="checkbox" class="switch" id="app-${a.id}" data-app="${a.id}" ${P.apps[a.id] ? 'checked' : ''}></label>`).join('');
+  $$('[data-app]').forEach((c) => c.addEventListener('change', () => { P.apps[c.dataset.app] = c.checked; save(); }));
+  ['blockUnlimited', 'blockNewAddr', 'blockFresh', 'blockFlagged'].forEach((k) => { const c = $('#' + k); c.checked = P[k]; c.addEventListener('change', () => { P[k] = c.checked; save(); }); });
+  function setMode(m) {
+    P.mode = m; save();
+    $$('[data-mode]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.mode === m));
+    $('#modeHelp').textContent = m === 'guard'
+      ? 'Guard: anything inside your rules runs on its own. Anything outside them is vetoed and sent to you to approve.'
+      : 'Strict: even moves inside your rules wait for your tap. Slower, safest.';
+    renderStatus();
+  }
+  $$('[data-mode]').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
+  setMode(P.mode);
+  function setFrozen(f) {
+    P.frozen = f; save();
+    $('#killBtn').textContent = f ? 'Unfreeze agent' : 'Freeze agent now';
+    $('#killBtn').className = f ? 'btn primary' : 'btn danger';
+    renderStatus();
+  }
+  $('#killBtn').addEventListener('click', () => { setFrozen(!P.frozen); toast(P.frozen ? 'Agent frozen. Nothing can be signed.' : 'Agent unfrozen'); });
+  setFrozen(P.frozen);
+
+  /* ---------------- Sentinels ---------------- */
+  const THREATS = [
+    ['0x9f3c…a1d0', 'Fake "wallet verify" approval drainer', 42000, 318],
+    ['0x51de…77c2', 'Support-chat refund scam address', 18500, 96],
+    ['0xb07a…e913', 'Honeypot: sell function disabled', 26000, 211],
+    ['0x3c80…0f5b', 'Router clone that skims 30% per swap', 12000, 54],
+  ];
+  $('#threats').innerHTML = THREATS.map((t) => `<tr><td class="mono">${t[0]}</td><td>${esc(t[1])}</td><td class="num">${t[2].toLocaleString()} VETO</td><td class="num">${t[3]}</td></tr>`).join('');
+  $('#radar').innerHTML = THREATS.slice(0, 3).map((t) => `<div class="radar-item"><b>${esc(t[1])}</b><small>${t[0]} · blocked ${t[3]}×</small><span class="pill no"><span class="dot"></span>FLAGGED</span></div>`).join('');
+  const ALLOC = [['Sentinel rewards & community', 35], ['Liquidity', 20], ['Treasury', 15], ['Team (12-mo cliff, 36-mo vest)', 15], ['Early backers (24-mo vest)', 10], ['Launch partners', 5]];
+  $('#alloc').innerHTML = ALLOC.map(([n, p]) => `<div class="alloc-row"><div>${esc(n)}<div class="alloc-bar"><i style="width:${p / 35 * 100}%"></i></div></div><span class="mono" style="text-align:right">${p}%</span></div>`).join('');
+  $('#checkAddr').addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    const v = e.target.value.trim();
+    if (!/^0x[0-9a-f]{40}$/i.test(v)) { toast('Paste a full 0x address (42 characters)'); return; }
+    toast('Not on the threat list. Live checks run once contracts are deployed.');
+  });
+
+  /* ---------------- Real wallet (EIP-6963 / EIP-1193) ---------------- */
+  const CHAIN = { id: 4663, hex: '0x1237', name: 'Robinhood Chain', rpc: 'https://rpc.mainnet.chain.robinhood.com', explorer: 'https://robinhoodchain.blockscout.com' };
+  const W = { provider: null, name: '', address: null, chainId: null, balance: null };
+  const found = new Map();
+  window.addEventListener('eip6963:announceProvider', (e) => { const d = e.detail; if (d?.info?.rdns && d.provider) found.set(d.info.rdns, d); });
+  window.dispatchEvent(new Event('eip6963:requestProvider'));
+  function wallets() {
+    const list = [...found.values()].map((d) => ({ name: d.info.name, icon: d.info.icon, provider: d.provider }));
+    if (!list.length && window.ethereum) list.push({ name: window.ethereum.isMetaMask ? 'MetaMask' : 'Browser wallet', icon: '', provider: window.ethereum });
+    return list;
+  }
+  const short = (a) => a.slice(0, 6) + '…' + a.slice(-4);
+  function walletErr(e) {
+    if (e?.code === 4001) return 'You cancelled the request in your wallet.';
+    if (e?.code === -32002) return 'Your wallet already has a request open. Check the wallet window.';
+    return e?.message ? 'Wallet error: ' + e.message : 'Something went wrong with the wallet.';
+  }
+  async function ensureChain() {
+    try { await W.provider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CHAIN.hex }] }); }
+    catch (e) {
+      if (e?.code === 4902 || /unrecognized|not added|unknown chain/i.test(e?.message || '')) {
+        await W.provider.request({ method: 'wallet_addEthereumChain', params: [{ chainId: CHAIN.hex, chainName: CHAIN.name, nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 }, rpcUrls: [CHAIN.rpc], blockExplorerUrls: [CHAIN.explorer] }] });
+      } else throw e;
+    }
+  }
+  async function refresh() {
+    if (!W.provider || !W.address) return renderWallet();
+    try {
+      W.chainId = parseInt(await W.provider.request({ method: 'eth_chainId' }), 16);
+      const wei = BigInt(await W.provider.request({ method: 'eth_getBalance', params: [W.address, 'latest'] }));
+      W.balance = Number(wei) / 1e18;
+    } catch { W.balance = null; }
+    renderWallet();
+  }
+  async function connect(w) {
+    closeModal();
+    W.provider = w.provider; W.name = w.name;
+    try {
+      const accts = await W.provider.request({ method: 'eth_requestAccounts' });
+      W.address = accts[0];
+      try { await ensureChain(); } catch (e) { toast(walletErr(e)); }
+      W.provider.on?.('accountsChanged', (a) => { W.address = a[0] || null; refresh(); });
+      W.provider.on?.('chainChanged', () => refresh());
+      await refresh();
+      toast('Connected ' + short(W.address));
+    } catch (e) { W.provider = null; toast(walletErr(e)); }
+  }
+  function openConnect() {
+    const list = wallets();
+    if (!list.length) {
+      return modal('Connect a wallet', `<p>No browser wallet found on this device. Install MetaMask, Rabby or Coinbase Wallet, or open this page inside your wallet app's browser.</p>`);
+    }
+    modal('Connect a wallet', `<p>Pick a wallet. You'll be asked to switch to Robinhood Chain.</p><div class="wl">${list.map((w, i) => `<button type="button" data-w="${i}">${w.icon ? `<img src="${esc(w.icon)}" alt="">` : '<span class="wi">◎</span>'}${esc(w.name)}</button>`).join('')}</div>`);
+    $$('[data-w]').forEach((b) => b.addEventListener('click', () => connect(list[+b.dataset.w])));
+  }
+  function disconnect() { W.provider = null; W.address = null; W.balance = null; renderWallet(); toast('Disconnected'); }
+  function renderWallet() {
+    const on = !!W.address, right = W.chainId === CHAIN.id;
+    $$('.connect-label').forEach((l) => (l.textContent = on ? short(W.address) : l.closest('.topbar') ? 'Connect' : 'Connect wallet'));
+    $('#walletCard').innerHTML = on
+      ? `<div class="status-row"><span class="label">${esc(W.name)}</span><span class="pill ${right ? 'ok' : 'warn'}"><span class="dot"></span>${right ? 'ROBINHOOD CHAIN' : 'WRONG NETWORK'}</span></div>
+         <div class="addr">${esc(W.address)}</div>
+         <div><span class="label">Balance</span><div class="bal" style="margin-top:6px">${W.balance == null ? '—' : W.balance.toFixed(4) + ' ETH'}</div></div>
+         <div class="chips">${right ? `<a class="btn sm" href="${CHAIN.explorer}/address/${esc(W.address)}" target="_blank" rel="noopener">View on explorer</a>` : '<button class="btn sm primary" type="button" id="switchNet">Switch to Robinhood Chain</button>'}<button class="btn sm" type="button" id="refreshBal">Refresh</button><button class="btn sm danger" type="button" id="discBtn">Disconnect</button></div>`
+      : `<span class="label">Not connected</span><div class="bal">Connect to see your vault</div><p class="note" style="margin:0">Works with MetaMask, Rabby, Coinbase Wallet and any wallet that supports Robinhood Chain.</p><button class="btn primary" type="button" data-connect>Connect wallet</button>`;
+    $('#switchNet')?.addEventListener('click', () => ensureChain().then(refresh).catch((e) => toast(walletErr(e))));
+    $('#refreshBal')?.addEventListener('click', refresh);
+    $('#discBtn')?.addEventListener('click', disconnect);
+    $$('#walletCard [data-connect]').forEach((b) => b.addEventListener('click', openConnect));
+  }
+  $$('[data-connect]').forEach((b) => b.addEventListener('click', () => (W.address ? go('wallet') : openConnect())));
+  renderWallet();
+
+  /* Link Telegram: the owner signs a fixed-format message; the bot checks it against vault.owner() */
+  $('#linkForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const vault = $('#linkVault').value.trim().toLowerCase();
+    const code = $('#linkCode').value.trim().toUpperCase();
+    if (!/^0x[0-9a-f]{40}$/.test(vault)) return toast('Enter the full vault address (0x + 40 characters).');
+    if (!/^[0-9A-F]{8}$/.test(code)) return toast('The code is the 8 characters the bot sent you.');
+    if (!W.address) { openConnect(); return toast('Connect your vault owner wallet first.'); }
+    const message = `VETO: link vault ${vault} to Telegram with code ${code}`;
+    const hex = '0x' + [...new TextEncoder().encode(message)].map((b) => b.toString(16).padStart(2, '0')).join('');
+    try {
+      const sig = await W.provider.request({ method: 'personal_sign', params: [hex, W.address] });
+      $('#linkSig').textContent = sig;
+      $('#linkOut').hidden = false;
+      toast('Signed. Paste the signature into the bot.');
+    } catch (err) { toast(walletErr(err)); }
+  });
+  $('#linkCopy').addEventListener('click', () => {
+    const sig = $('#linkSig').textContent;
+    navigator.clipboard.writeText(sig).then(() => toast('Copied'), () => {
+      const r = document.createRange(); r.selectNodeContents($('#linkSig'));
+      const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast('Selected. Copy it with your keyboard.');
+    });
+  });
+
+  /* ---------------- Modal ---------------- */
+  function modal(title, html) { $('#mTitle').textContent = title; $('#mBody').innerHTML = html; $('#scrim').hidden = false; $('#mClose').focus(); }
+  function closeModal() { $('#scrim').hidden = true; }
+  $('#mClose').addEventListener('click', closeModal);
+  $('#scrim').addEventListener('click', (e) => { if (e.target.id === 'scrim') closeModal(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+  /* ---------------- Router ---------------- */
+  const VIEWS = ['home', 'agent', 'rules', 'stake', 'wallet'];
+  function go(v) {
+    if (!VIEWS.includes(v)) v = 'home';
+    VIEWS.forEach((x) => ($('#v-' + x).hidden = x !== v));
+    $$('[data-go]').forEach((b) => (b.dataset.go === v && !b.classList.contains('brand') ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current')));
+    const sec = $('#v-' + v);
+    $('#viewTitle').firstChild.textContent = sec.dataset.title;
+    $('#viewSub').textContent = sec.dataset.sub;
+    try { history.replaceState(null, '', '#' + v); } catch {}
+    window.scrollTo(0, 0);
+  }
+  $$('[data-go]').forEach((b) => b.addEventListener('click', (e) => { e.preventDefault(); go(b.dataset.go); }));
+  go((location.hash || '#home').slice(1));
+  renderStatus();
+})();
+</script>
+
+</body>
+</html>
