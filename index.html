@@ -393,7 +393,7 @@ td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-al
         <div class="kill">
           <h3>Kill switch</h3>
           <p>Freezes the vault instantly. Your agent can't sign anything until you unfreeze it. Your funds stay in your vault and you can withdraw them any time.</p>
-          <button class="btn danger" id="killBtn" type="button">Freeze agent now</button>
+          <button class="btn danger holdable arm" id="killBtn" type="button">Hold to freeze agent</button>
         </div>
       </div>
     </section>
@@ -469,12 +469,12 @@ td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-al
 
   <aside class="aside" aria-label="Threat radar">
     <input class="search" placeholder="Check a contract address" id="checkAddr" aria-label="Check a contract address">
-    <div class="card">
+    <div class="card spotlight">
       <h2>Threat radar</h2>
       <div class="radar" id="radar"></div>
       <button class="btn sm" data-go="stake">See the full list</button>
     </div>
-    <div class="card">
+    <div class="card spotlight">
       <h2>Why VETO</h2>
       <p class="note" style="margin:0">A spending limit written in your agent's prompt is a suggestion. Prompt injection can talk it away. VETO puts the limit in a contract the agent can't edit.</p>
       <div class="kv">
@@ -590,7 +590,7 @@ td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-al
   /* ---------------- Feed ---------------- */
   const AGENTS = ['you', 'Atlas', 'Momo'];
   function addPost(p, v, who = 'Atlas', source = '') {
-    S.feed.unshift({ p, v, who, source, at: new Date() });
+    S.feed.unshift({ p, v, who, source, at: new Date(), fresh: true });
     if (S.feed.length > 40) S.feed.pop();
     renderFeed();
   }
@@ -598,18 +598,20 @@ td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-al
     const { p, v } = e;
     const time = e.at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const stamp = v.ok ? '<span class="stamp ok">SIGNED</span>' : '<span class="stamp no">VETO</span>';
-    return `<article class="post">
+    const n = v.reasons.length;
+    return `<article class="post${e.fresh ? ' fresh' : ''}" style="--n:${n}">
       <div class="avatar agent">${esc(e.who[0])}</div>
       <div class="body">
         <div class="head"><b>${esc(e.who)}</b><span>agent · ${time}${e.source ? ' · ' + esc(e.source) : ''}</span></div>
         <div class="ask has-stamp"><div class="what">${esc(p.label)}</div><div class="meta">${esc(p.to || '')}${p.usd ? ' · ' + usd(p.usd) : ''}</div>${stamp}</div>
-        <ul class="reasons">${v.reasons.map((x) => `<li class="${x.t}">${esc(x.m)}</li>`).join('')}</ul>
+        <ul class="reasons">${v.reasons.map((x, i) => `<li class="${x.t}" style="--i:${i}">${esc(x.m)}</li>`).join('')}</ul>
         <div class="acts">${v.ok ? '<button type="button" data-act="explorer">View receipt</button>' : '<button type="button" data-act="override">Review and approve</button>'}<button type="button" data-act="why">Why?</button></div>
       </div></article>`;
   }
   function renderFeed() {
     const list = S.feed.filter((e) => S.filter === 'all' || (S.filter === 'ok') === e.v.ok);
     $('#feed').innerHTML = list.length ? list.map(postHTML).join('') : '<div class="empty">Nothing here yet. Ask your agent to make a trade above.</div>';
+    S.feed.forEach((e) => (e.fresh = false)); // only the newest post plays its check animation
   }
   $('#feed').addEventListener('click', (ev) => {
     const b = ev.target.closest('button[data-act]'); if (!b) return;
@@ -618,18 +620,39 @@ td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-al
     if (a === 'override') modal('Review and approve', `<p>In the live app, you'd approve this one move from your own wallet, and the vault would execute it once. Your rules stay the same.</p><p>This preview is a simulation, so nothing will be sent.</p>`);
     if (a === 'explorer') toast('Receipts link to the explorer once contracts are live');
   });
+  const tabsInk = document.createElement('span');
+  tabsInk.className = 'tabs-ink';
+  $('.tabs').append(tabsInk);
+  const placeInk = () => { const b = $('.tabs [aria-selected="true"]'); if (b && b.offsetWidth) { tabsInk.style.left = b.offsetLeft + 'px'; tabsInk.style.width = b.offsetWidth + 'px'; } };
+  addEventListener('resize', placeInk);
   $$('.tabs button').forEach((b) => b.addEventListener('click', () => {
     $$('.tabs button').forEach((x) => x.setAttribute('aria-selected', x === b));
+    placeInk();
     S.filter = b.dataset.filter; renderFeed();
   }));
 
+  // Rolls a number from what it showed last to its new value.
+  function countTo(el, to, fmt = (x) => String(Math.round(x)), from) {
+    if (!el) return;
+    const start = from ?? el._val ?? 0;
+    el._val = to;
+    cancelAnimationFrame(el._raf);
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches || start === to) { el.textContent = fmt(to); return; }
+    const t0 = performance.now(), dur = 700;
+    const step = (now) => {
+      const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+      el.textContent = fmt(start + (to - start) * e);
+      if (k < 1) el._raf = requestAnimationFrame(step);
+    };
+    el._raf = requestAnimationFrame(step);
+  }
   function renderStatus() {
-    $('#spentTxt').textContent = usd(S.spent);
+    countTo($('#spentTxt'), S.spent, usd);
     $('#capTxt').textContent = usd(P.capDaily);
     const pct = Math.min(100, (S.spent / P.capDaily) * 100);
     $('#spendMeter i').style.width = pct + '%';
     $('#spendMeter').classList.toggle('hot', pct > 80);
-    $('#nOk').textContent = S.ok; $('#nNo').textContent = S.no; $('#nSaved').textContent = usd(S.saved);
+    countTo($('#nOk'), S.ok); countTo($('#nNo'), S.no); countTo($('#nSaved'), S.saved, usd);
     const pill = $('#vaultPill');
     pill.className = 'pill ' + (P.frozen ? 'no' : P.mode === 'strict' ? 'accent' : 'ok');
     $('#vaultState').textContent = P.frozen ? 'FROZEN' : P.mode === 'strict' ? 'STRICT' : 'GUARDED';
@@ -692,7 +715,12 @@ td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-al
   }
   $('#chatForm').addEventListener('submit', (e) => {
     e.preventDefault(); const v = $('#chatInput').value.trim(); if (!v) return;
-    bubble(v, 'me'); $('#chatInput').value = ''; setTimeout(() => reply(v), 350);
+    bubble(v, 'me'); $('#chatInput').value = '';
+    const typing = document.createElement('div');
+    typing.className = 'bubble bot typing'; typing.setAttribute('aria-label', 'Checking your rules');
+    typing.innerHTML = '<i></i><i></i><i></i>';
+    setTimeout(() => { chat.append(typing); typing.scrollIntoView({ block: 'end', behavior: 'smooth' }); }, 150);
+    setTimeout(() => { typing.remove(); reply(v); }, 900);
   });
   $$('[data-say]').forEach((b) => b.addEventListener('click', () => { $('#chatInput').value = b.dataset.say; $('#chatForm').requestSubmit(); }));
 
@@ -718,13 +746,64 @@ td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-al
   }
   $$('[data-mode]').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
   setMode(P.mode);
+  // Press and hold to confirm: a fill sweeps across the button, then a red wave washes the screen.
+  function holdButton(btn, onDone, ms = 1000) {
+    if (!btn || btn._hold) return;
+    btn._hold = true;
+    btn.classList.add('holdable');
+    let raf = 0, done = false;
+    const set = (k) => btn.style.setProperty('--hold', k);
+    const down = (e) => {
+      if (btn.disabled || !btn.classList.contains('arm')) return;
+      if (e.type === 'pointerdown' && e.button !== 0) return;
+      done = false;
+      const t0 = performance.now();
+      cancelAnimationFrame(raf);
+      const tick = (now) => {
+        const k = Math.min(1, (now - t0) / ms);
+        set(k);
+        if (k >= 1) {
+          done = true; btn._justDone = true; set(0);
+          navigator.vibrate?.(40);
+          freezeFlash();
+          onDone();
+          return;
+        }
+        raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+    };
+    const up = () => { if (!done) { cancelAnimationFrame(raf); set(0); } };
+    btn.addEventListener('pointerdown', down);
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => btn.addEventListener(ev, up));
+    btn.addEventListener('keydown', (e) => { if (e.key === ' ' && !e.repeat) { e.preventDefault(); down(e); } });
+    btn.addEventListener('keyup', (e) => { if (e.key === ' ') up(); });
+    btn.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
+  // Click handlers on hold buttons call this first: it swallows the click that ends a hold.
+  function holdClick(btn) {
+    if (btn._justDone) { btn._justDone = false; return 'done'; }
+    if (btn.classList.contains('arm')) { toast('Press and hold to freeze'); return 'tap'; }
+    return 'click';
+  }
+  function freezeFlash() {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const f = document.createElement('div');
+    f.className = 'freeze-flash';
+    document.body.append(f);
+    f.addEventListener('animationend', () => f.remove());
+  }
   function setFrozen(f) {
     P.frozen = f; save();
-    $('#killBtn').textContent = f ? 'Unfreeze agent' : 'Freeze agent now';
-    $('#killBtn').className = f ? 'btn primary' : 'btn danger';
+    $('#killBtn').textContent = f ? 'Unfreeze agent' : 'Hold to freeze agent';
+    $('#killBtn').className = f ? 'btn primary holdable' : 'btn danger holdable arm';
     renderStatus();
   }
-  $('#killBtn').addEventListener('click', () => { setFrozen(!P.frozen); toast(P.frozen ? 'Agent frozen. Nothing can be signed.' : 'Agent unfrozen'); });
+  holdButton($('#killBtn'), () => { setFrozen(true); toast('Agent frozen. Nothing can be signed.'); });
+  $('#killBtn').addEventListener('click', () => {
+    if (holdClick($('#killBtn')) !== 'click') return;
+    setFrozen(false); toast('Agent unfrozen');
+  });
   setFrozen(P.frozen);
 
   /* ---------------- Sentinels ---------------- */
@@ -824,7 +903,7 @@ td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-al
   }
   const hooks = [];
   // The live-vault script below reads wallet state and helpers from here.
-  window.VETO_APP = { W, CHAIN, NETS, hooks, refresh, ensureChain, openConnect, walletErr, toast, modal: (t, h) => modal(t, h), closeModal: () => closeModal(), esc, short, go: (v) => go(v) };
+  window.VETO_APP = { W, CHAIN, NETS, hooks, refresh, ensureChain, openConnect, walletErr, toast, modal: (t, h) => modal(t, h), closeModal: () => closeModal(), esc, short, go: (v) => go(v), countTo: (...a) => countTo(...a), holdButton: (...a) => holdButton(...a), holdClick: (b) => holdClick(b) };
   $$('[data-connect]').forEach((b) => b.addEventListener('click', () => (W.address ? go('wallet') : openConnect())));
   renderWallet();
 
@@ -867,6 +946,8 @@ td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-al
     VIEWS.forEach((x) => ($('#v-' + x).hidden = x !== v));
     $$('[data-go]').forEach((b) => (b.dataset.go === v && !b.classList.contains('brand') ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current')));
     const sec = $('#v-' + v);
+    sec.classList.remove('view-in'); void sec.offsetWidth; sec.classList.add('view-in');
+    if (v === 'home') requestAnimationFrame(placeInk);
     $('#viewTitle').firstChild.textContent = sec.dataset.title;
     $('#viewSub').textContent = sec.dataset.sub;
     try { history.replaceState(null, '', '#' + v); } catch {}
@@ -875,6 +956,8 @@ td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-al
   }
   $$('[data-go]').forEach((b) => b.addEventListener('click', (e) => { e.preventDefault(); go(b.dataset.go); }));
   go((location.hash || '#home').slice(1));
+  // Back/forward and #tab links switch tabs without reloading.
+  addEventListener('hashchange', () => go((location.hash || '#home').slice(1)));
   renderStatus();
 })();
 </script>
@@ -1095,7 +1178,7 @@ td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-al
         <h3>Kill switch</h3>
         <p>${v.frozen ? 'Your vault is frozen. The agent can’t sign anything until you unfreeze it.' : 'Freeze the vault instantly. The agent can’t sign anything until you unfreeze it. You can still withdraw.'}</p>
         <div class="chips">
-          <button class="btn ${v.frozen ? 'primary' : 'danger'}" type="button" id="vFreeze" ${dis}>${v.frozen ? 'Unfreeze vault' : 'Freeze vault now'}</button>
+          <button class="btn ${v.frozen ? 'primary' : 'danger arm'} holdable" type="button" id="vFreeze" ${dis}>${v.frozen ? 'Unfreeze vault' : 'Hold to freeze vault'}</button>
           <button class="btn" type="button" id="vWithdraw" ${dis}>Withdraw everything</button>
         </div>
       </div></div>
@@ -1127,7 +1210,9 @@ td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-al
       ];
       send('Save rules', (sg) => vc(sg).multicall(calls));
     });
-    $('#vFreeze').addEventListener('click', () => send(v.frozen ? 'Unfreeze' : 'Freeze', (sg) => vc(sg).setFrozen(!v.frozen)));
+    const fz = $('#vFreeze');
+    A.holdButton(fz, () => send('Freeze', (sg) => vc(sg).setFrozen(true)));
+    fz.addEventListener('click', () => { if (A.holdClick(fz) === 'click') send('Unfreeze', (sg) => vc(sg).setFrozen(false)); });
     $('#vWithdraw').addEventListener('click', () => {
       const I = new E.Interface(ABI.vault);
       const calls = ['USDG', ...STOCKS].filter((s) => v.bals[s] > 0n).map((s) => I.encodeFunctionData('withdraw', [d[`t${s}`], E.getAddress(A.W.address.toLowerCase()), v.bals[s]]));
@@ -1143,6 +1228,7 @@ td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-al
   }
 
   /* ---------- Live network stats (Sentinels tab) ---------- */
+  const statPrev = {};
   async function stats() {
     const box = $('#liveStats');
     if (!S.dep || !box) return;
@@ -1162,11 +1248,14 @@ td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-al
       box.hidden = false;
       box.innerHTML = `<div class="status-row" style="margin-bottom:12px"><span class="label"><span class="live-dot"></span>Live on ${A.esc(A.CHAIN.name)}</span><span class="note">read from the contracts</span></div>
         <div class="stats" style="grid-template-columns:repeat(2,minmax(0,1fr))">
-          <div class="stat"><span class="label">Vaults</span><b>${count.toLocaleString()}</b><small>created</small></div>
-          <div class="stat"><span class="label">Moves signed</span><b>${moves.toLocaleString()}</b><small>through vault rules${count > n ? ` (first ${n} vaults)` : ''}</small></div>
-          <div class="stat"><span class="label">Under guard</span><b>${fmt(held, 0)}</b><small>test USDG in vaults</small></div>
-          <div class="stat"><span class="label">Flagged</span><b>${flagged.toLocaleString()}</b><small>addresses on the threat list</small></div>
+          <div class="stat spotlight"><span class="label">Vaults</span><b data-k="vaults">0</b><small>created</small></div>
+          <div class="stat spotlight"><span class="label">Moves signed</span><b data-k="moves">0</b><small>through vault rules${count > n ? ` (first ${n} vaults)` : ''}</small></div>
+          <div class="stat spotlight"><span class="label">Under guard</span><b data-k="held">0</b><small>test USDG in vaults</small></div>
+          <div class="stat spotlight"><span class="label">Flagged</span><b data-k="flagged">0</b><small>addresses on the threat list</small></div>
         </div>`;
+      const vals = { vaults: count, moves: Number(moves), held: Number(E.formatUnits(held, 18)), flagged: Number(flagged) };
+      for (const [k, val] of Object.entries(vals)) A.countTo(box.querySelector(`[data-k="${k}"]`), val, (x) => Math.round(x).toLocaleString('en-US'), statPrev[k] ?? 0);
+      Object.assign(statPrev, vals);
     } catch (e) {
       box.hidden = true;
     }
@@ -1283,6 +1372,98 @@ td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-al
     s.addEventListener('animationend', () => s.remove());
   }, { passive: true });
 })();
+</script>
+<style>
+/* ---------- Live rule check + stamp slam (newest post only) ---------- */
+.stamp { --sb: translateY(-50%) rotate(-8deg); transform: var(--sb); }
+.post { animation: none; }
+.post.fresh { animation: drop .35s ease both; }
+.post.fresh .ask::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--accent) 30%, transparent) 50%, transparent); transform: translateY(-100%); animation: scan calc(.3s + var(--n) * .26s) .1s ease-in-out both; pointer-events: none; }
+.post.fresh .reasons li { animation: tick .3s calc(.25s + var(--i) * .26s) ease-out both; }
+.post.fresh .reasons li::before { animation: pop .3s calc(.25s + var(--i) * .26s) cubic-bezier(.2,1.8,.4,1) both; }
+.post.fresh .stamp { animation: slam .45s calc(.35s + var(--n) * .26s) cubic-bezier(.2,1.6,.4,1) both; }
+.post.fresh .ask { animation: shake .35s calc(.62s + var(--n) * .26s); }
+@keyframes scan { from { transform: translateY(-100%); } to { transform: translateY(100%); } }
+@keyframes tick { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
+@keyframes pop { from { transform: translateY(-1px) scale(0); } to { transform: translateY(-1px) scale(1); } }
+@keyframes slam { 0% { transform: var(--sb) rotate(-16deg) scale(2.6); opacity: 0; } 60% { opacity: 1; } 100% { transform: var(--sb) scale(1); opacity: .92; } }
+@keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-4px) rotate(-.3deg); } 50% { transform: translateX(3px); } 75% { transform: translateX(-2px); } }
+
+/* Chat: "checking your rules" dots, then the verdict lands */
+.bubble.typing { display: inline-flex; gap: 6px; align-items: center; padding: 14px 16px; width: max-content; }
+.bubble.typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--mute); animation: dot 1s infinite ease-in-out; }
+.bubble.typing i:nth-child(2) { animation-delay: .15s; } .bubble.typing i:nth-child(3) { animation-delay: .3s; }
+@keyframes dot { 0%, 80%, 100% { transform: translateY(0); opacity: .4; } 40% { transform: translateY(-4px); opacity: 1; } }
+.bubble { animation: bubbleIn .28s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes bubbleIn { from { opacity: 0; transform: translateY(8px) scale(.98); } }
+.bubble .verdict { display: inline-block; animation: vslam .45s .2s cubic-bezier(.2,1.6,.4,1) both; }
+@keyframes vslam { 0% { transform: scale(2.2) rotate(-6deg); opacity: 0; } 100% { transform: none; opacity: 1; } }
+
+/* ---------- Hold-to-freeze ---------- */
+.holdable { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
+.holdable.arm::after { content: ""; position: absolute; inset: 0; background: color-mix(in srgb, var(--no) 42%, transparent); transform: scaleX(var(--hold, 0)); transform-origin: left; z-index: -1; pointer-events: none; }
+.holdable.arm { box-shadow: 0 0 calc(var(--hold, 0) * 40px) calc(var(--hold, 0) * 4px) color-mix(in srgb, var(--no) 60%, transparent); }
+.freeze-flash { position: fixed; inset: 0; z-index: 60; pointer-events: none; background: radial-gradient(circle at 50% 55%, color-mix(in srgb, var(--no) 38%, transparent), transparent 70%); animation: flash .9s ease-out both; }
+@keyframes flash { 0% { opacity: 0; transform: scale(.5); } 25% { opacity: 1; } 100% { opacity: 0; transform: scale(1.3); } }
+
+/* ---------- Meters glow ---------- */
+.meter i { box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 70%, transparent); transition: width .6s cubic-bezier(.2,.8,.2,1), background .3s; }
+.meter.hot i { box-shadow: 0 0 12px color-mix(in srgb, var(--warn) 70%, transparent); }
+
+/* ---------- Tab changes ---------- */
+.view.view-in { animation: viewIn .38s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes viewIn { from { opacity: 0; transform: translateY(10px); filter: blur(3px); } to { opacity: 1; transform: none; filter: none; } }
+.tabs { position: relative; }
+.tabs button[aria-selected="true"] { border-bottom-color: transparent; }
+.tabs-ink { position: absolute; bottom: -1px; height: 2px; background: var(--accent); box-shadow: 0 0 10px var(--accent); transition: left .35s cubic-bezier(.2,.8,.2,1), width .35s cubic-bezier(.2,.8,.2,1); pointer-events: none; }
+
+/* ---------- Spotlight cards (Sentinels + side column) ---------- */
+.spotlight { position: relative; overflow: hidden; }
+.spotlight::before { content: ""; position: absolute; inset: 0; background: radial-gradient(240px circle at var(--sx, -300px) var(--sy, -300px), color-mix(in srgb, var(--accent) 18%, transparent), transparent 60%); pointer-events: none; }
+
+/* ---------- Phones ---------- */
+@media (max-width: 700px) {
+  .stamp { --sb: rotate(-6deg); }
+  .chip { padding: 8px 12px; font-size: 13px; min-height: 36px; }
+  .btn.sm { padding: 9px 14px; font-size: 13.5px; }
+  .post .acts { gap: 6px; }
+  .post .acts button { min-height: 36px; padding: 8px 10px 8px 0; }
+  .tabbar button { min-height: 52px; }
+  .composer { gap: 10px; }
+  .composer .row .btn { flex: 1 1 100%; }
+  .kill .chips .btn, .kill > .btn { width: 100%; }
+  .stats { gap: 6px; }
+  .stat small { font-size: 11px; }
+  .kv dd { text-align: left; }
+  .kv { grid-template-columns: 1fr; gap: 2px 0; }
+  .kv dt { margin-top: 8px; }
+  table { font-size: 12.5px; }
+  .hero-stake h2 { font-size: 28px; }
+  .modal { max-height: calc(100vh - 32px); overflow-y: auto; }
+  input, select, textarea { font-size: 16px !important; } /* stops iPhone zooming into fields */
+  .btn:active, .chip:active { box-shadow: 0 0 0 1px color-mix(in srgb, var(--glow) 55%, transparent), 0 0 28px -4px color-mix(in srgb, var(--glow) 70%, transparent); }
+}
+@media (max-width: 380px) {
+  .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .stat { padding: 8px; }
+  .stat b { font-size: 15px; }
+  .label { letter-spacing: .08em; }
+  .topbar h1 { font-size: 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .post.fresh, .post.fresh *, .post.fresh .ask::after, .bubble, .bubble .verdict, .view.view-in, .freeze-flash { animation: none !important; }
+  .tabs-ink, .meter i { transition: none; }
+}
+</style>
+<script>
+/* Spotlight: a soft light follows the cursor across cards marked .spotlight */
+document.addEventListener('pointermove', (e) => {
+  const c = e.target.closest?.('.spotlight');
+  if (!c) return;
+  const r = c.getBoundingClientRect();
+  c.style.setProperty('--sx', `${e.clientX - r.left}px`);
+  c.style.setProperty('--sy', `${e.clientY - r.top}px`);
+}, { passive: true });
 </script>
 
 </body>
