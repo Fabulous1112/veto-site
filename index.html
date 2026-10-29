@@ -1224,6 +1224,66 @@ td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-al
   boot();
 })();
 </script>
+<style>
+/* Button motion: cursor-following glow, soft outer halo, lift on hover, press squash, click ripple.
+   Each button family picks its glow color through --glow. */
+@property --glow-o { syntax: '<number>'; inherits: false; initial-value: 0; }
+.btn, .chip, .nav-btn, .tabs button, .seg button, .wl button, .tabbar button, .switch {
+  --glow: var(--accent);
+  position: relative; overflow: hidden; isolation: isolate;
+  transition: transform .2s cubic-bezier(.2,.8,.2,1), box-shadow .3s ease, border-color .2s ease, color .2s ease, background-color .2s ease, --glow-o .3s ease;
+}
+.btn.danger, .kill .btn { --glow: var(--no); }
+.btn, .chip, .nav-btn, .tabs button, .seg button, .wl button {
+  background-image: radial-gradient(160px circle at var(--mx, 50%) var(--my, 50%), color-mix(in srgb, var(--glow) calc(var(--glow-o) * 38%), transparent), transparent 70%);
+}
+.btn.primary { background-image: radial-gradient(160px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255, calc(var(--glow-o) * .32)), transparent 70%); }
+@media (hover: hover) {
+  .btn:hover, .chip:hover, .wl button:hover { --glow-o: 1; transform: translateY(-2px); border-color: color-mix(in srgb, var(--glow) 75%, var(--line)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--glow) 55%, transparent), 0 8px 26px -6px color-mix(in srgb, var(--glow) 65%, transparent), 0 0 46px -8px color-mix(in srgb, var(--glow) 55%, transparent); }
+  .btn.primary:hover { filter: none; box-shadow: 0 0 0 1px color-mix(in srgb, var(--glow) 80%, white), 0 10px 32px -6px color-mix(in srgb, var(--glow) 85%, transparent), 0 0 64px -6px color-mix(in srgb, var(--glow) 70%, transparent); }
+  .nav-btn:hover, .tabs button:hover, .seg button:hover, .tabbar button:hover { --glow-o: 1; color: var(--ink); }
+  .nav-btn:hover svg { filter: drop-shadow(0 0 8px color-mix(in srgb, var(--accent) 80%, transparent)); }
+}
+.btn:focus-visible, .chip:focus-visible { --glow-o: 1; box-shadow: 0 0 0 2px var(--glow), 0 0 30px -4px color-mix(in srgb, var(--glow) 70%, transparent); outline: none; }
+.btn:active, .chip:active, .nav-btn:active, .wl button:active, .tabbar button:active { transform: translateY(0) scale(.96); transition-duration: .08s; }
+.tabbar button svg, .nav-btn svg { transition: transform .25s cubic-bezier(.2,.8,.2,1); }
+.tabbar button[aria-current="page"] svg { transform: translateY(-2px) scale(1.08); filter: drop-shadow(0 0 10px color-mix(in srgb, var(--accent) 80%, transparent)); }
+.nav-btn[aria-current="page"] svg { color: var(--accent); filter: drop-shadow(0 0 8px color-mix(in srgb, var(--accent) 70%, transparent)); }
+.switch:checked { box-shadow: 0 0 18px -2px color-mix(in srgb, var(--ok) 80%, transparent); }
+.btn[disabled] { transform: none !important; box-shadow: none !important; }
+.ripple { position: absolute; border-radius: 50%; pointer-events: none; transform: translate(-50%, -50%) scale(0); background: color-mix(in srgb, var(--glow) 55%, white); opacity: .45; animation: ripple .6s cubic-bezier(.2,.8,.2,1) forwards; z-index: -1; }
+.btn.primary .ripple { background: rgba(255,255,255,.55); }
+@keyframes ripple { to { transform: translate(-50%, -50%) scale(1); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .btn, .chip, .nav-btn, .wl button, .tabbar button { transition: box-shadow .2s, border-color .2s, color .2s !important; }
+  .btn:hover, .chip:hover, .wl button:hover, .btn:active, .chip:active { transform: none !important; }
+  .ripple { display: none; }
+}
+</style>
+<script>
+/* Feeds the cursor position to the glow, and drops a ripple where you click or tap. */
+(() => {
+  const SEL = '.btn, .chip, .nav-btn, .tabs button, .seg button, .wl button, .tabbar button';
+  document.addEventListener('pointermove', (e) => {
+    const b = e.target.closest?.(SEL);
+    if (!b) return;
+    const r = b.getBoundingClientRect();
+    b.style.setProperty('--mx', `${e.clientX - r.left}px`);
+    b.style.setProperty('--my', `${e.clientY - r.top}px`);
+  }, { passive: true });
+  document.addEventListener('pointerdown', (e) => {
+    const b = e.target.closest?.(SEL);
+    if (!b || b.disabled || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const r = b.getBoundingClientRect();
+    const d = Math.hypot(r.width, r.height) * 2;
+    const s = document.createElement('span');
+    s.className = 'ripple';
+    s.style.cssText = `width:${d}px;height:${d}px;left:${e.clientX - r.left}px;top:${e.clientY - r.top}px`;
+    b.appendChild(s);
+    s.addEventListener('animationend', () => s.remove());
+  }, { passive: true });
+})();
+</script>
 
 </body>
 </html>
