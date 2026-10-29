@@ -1,0 +1,161 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VETO Token Launcher</title><meta name="robots" content="noindex"><link rel="icon" href="/favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=IBM+Plex+Mono:wght@500;600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0b0e15;--card:#121722;--line:#242c3d;--ink:#e9edf6;--mute:#8b94a9;--brand:#6b78ff;--ok:#3ddc97;--warn:#ffb547;--bad:#ff5d6c}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Instrument Sans",system-ui,sans-serif;padding:32px 16px}
+main{max-width:640px;margin:0 auto}
+h1{font:800 34px/1.1 "Bricolage Grotesque";margin:0 0 6px}.lead{color:var(--mute);margin:0 0 22px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px;margin-bottom:14px}
+.k{font:600 12px/1 "IBM Plex Mono";letter-spacing:.12em;color:var(--mute);margin-bottom:8px}
+.mono{font:500 14px/1.5 "IBM Plex Mono";word-break:break-all}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+button{font:600 15px/1 "Instrument Sans",system-ui,sans-serif;border:1px solid var(--line);background:#1a2030;color:var(--ink);border-radius:12px;padding:13px 16px;cursor:pointer;transition:box-shadow .2s,transform .1s}
+button:hover:not(:disabled){box-shadow:0 0 0 3px rgba(107,120,255,.25),0 0 24px rgba(107,120,255,.35)}button:active{transform:scale(.98)}
+button.pri{background:var(--brand);border-color:var(--brand);color:#0b0e15}button:disabled{opacity:.45;cursor:not-allowed}
+button.sel{border-color:var(--brand);box-shadow:inset 0 0 0 1px var(--brand)}
+.net{flex:1;min-width:200px;text-align:left;line-height:1.35}.net small{display:block;color:var(--mute);font-weight:500;margin-top:4px}
+.msg{margin-top:12px;font-size:15px}.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}
+.big{font:600 17px/1.4 "IBM Plex Mono";word-break:break-all;color:var(--ok)}
+ul.checks{list-style:none;padding:0;margin:10px 0 0}ul.checks li{padding:4px 0;word-break:break-all}
+a{color:var(--brand)}
+.note{color:var(--mute);font-size:14px}
+</style></head><body><main>
+<h1>Launch $VETO</h1><p class="lead">Deploys the VETO token. All 1,000,000,000 tokens go to the launch wallet below, and only that wallet can do the deploy.</p>
+
+<div class="card"><div class="k">LAUNCH WALLET (RECEIVES 100% OF SUPPLY)</div><div class="mono" id="owner">0xe1a133493bE01D74e15FF2f1ACB7F9740288DB64</div>
+<p class="note" style="margin:8px 0 0">The token has no owner powers to hand out: no mint, no tax, no blacklist, no pause. This wallet is the deployer (shown as "creator" on the explorer) and the holder of the full supply.</p></div>
+
+<div class="card"><div class="k">1 · NETWORK</div><div class="row" id="nets"></div></div>
+
+<div class="card"><div class="k">2 · WALLET</div><div class="row" id="wallets"></div><div class="msg" id="wmsg"></div></div>
+
+<div class="card"><div class="k">3 · DEPLOY</div>
+<button class="pri" id="deploy" disabled>Deploy $VETO</button><div class="msg" id="dmsg"></div></div>
+
+<div class="card" id="done" hidden><div class="k">CONTRACT ADDRESS (THIS IS YOUR CA)</div><div class="big" id="ca"></div>
+<div class="row" style="margin-top:12px"><button id="copy">Copy CA</button><a id="exlink" target="_blank" rel="noopener"><button>Open on explorer</button></a></div>
+<ul class="checks" id="checks"></ul>
+<div class="msg" id="vmsg"></div></div>
+<p class="note">Never type a seed phrase or private key into any website, including this one. This page only asks your wallet to sign one transaction.</p>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
+<script>
+const OWNER = ethers.getAddress('0xe1a133493bE01D74e15FF2f1ACB7F9740288DB64');
+const BYTECODE = '0x610160604052348015610010575f5ffd5b5060405161155e38038061155e83398101604081905261002f916103a6565b604051806040016040528060048152602001635645544f60e01b81525080604051806040016040528060018152602001603160f81b815250604051806040016040528060048152602001635645544f60e01b815250604051806040016040528060048152602001635645544f60e01b81525081600390816100b0919061046b565b5060046100bd828261046b565b506100cd915083905060056101d9565b610120526100dc8160066101d9565b61014052815160208084019190912060e052815190820120610100524660a05261016860e05161010051604080517f8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f60208201529081019290925260608201524660808201523060a08201525f9060c00160405160208183030381529060405280519060200120905090565b60805250503060c052506001600160a01b0381166101bd5760405162461bcd60e51b815260206004820152600d60248201526c06469737472696275746f723d3609c1b60448201526064015b60405180910390fd5b6101d3816b033b2e3c9fd0803ce800000061020b565b5061059c565b5f6020835110156101f4576101ed83610243565b9050610205565b816101ff848261046b565b5060ff90505b92915050565b6001600160a01b0382166102345760405163ec442f0560e01b81525f60048201526024016101b4565b61023f5f8383610280565b5050565b5f5f829050601f8151111561026d578260405163305a27a960e01b81526004016101b49190610525565b80516102788261055a565b179392505050565b6001600160a01b0383166102aa578060025f82825461029f919061057d565b9091555061031a9050565b6001600160a01b0383165f90815260208190526040902054818110156102fc5760405163391434e360e21b81526001600160a01b038516600482015260248101829052604481018390526064016101b4565b6001600160a01b0384165f9081526020819052604090209082900390555b6001600160a01b03821661033657600280548290039055610354565b6001600160a01b0382165f9081526020819052604090208054820190555b816001600160a01b0316836001600160a01b03167fddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef8360405161039991815260200190565b60405180910390a3505050565b5f602082840312156103b6575f5ffd5b81516001600160a01b03811681146103cc575f5ffd5b9392505050565b634e487b7160e01b5f52604160045260245ffd5b600181811c908216806103fb57607f821691505b60208210810361041957634e487b7160e01b5f52602260045260245ffd5b50919050565b601f82111561046657805f5260205f20601f840160051c810160208510156104445750805b601f840160051c820191505b81811015610463575f8155600101610450565b50505b505050565b81516001600160401b03811115610484576104846103d3565b6104988161049284546103e7565b8461041f565b6020601f8211600181146104ca575f83156104b35750848201515b5f19600385901b1c1916600184901b178455610463565b5f84815260208120601f198516915b828110156104f957878501518255602094850194600190920191016104d9565b508482101561051657868401515f19600387901b60f8161c191681555b50505050600190811b01905550565b602081525f82518060208401528060208501604085015e5f604082850101526040601f19601f83011684010191505092915050565b80516020808301519190811015610419575f1960209190910360031b1b16919050565b8082018082111561020557634e487b7160e01b5f52601160045260245ffd5b60805160a05160c05160e051610100516101205161014051610f716105ed5f395f6107a501525f61077801525f6106ed01525f6106c501525f61062001525f61064a01525f6106740152610f715ff3fe608060405234801561000f575f5ffd5b50600436106100fb575f3560e01c806370a082311161009357806395d89b411161006357806395d89b411461020d578063a9059cbb14610215578063d505accf14610228578063dd62ed3e1461023b575f5ffd5b806370a08231146101a457806379cc6790146101cc5780637ecebe00146101df57806384b0196e146101f2575f5ffd5b8063313ce567116100ce578063313ce5671461016557806332cb6b0c146101745780633644e5151461018757806342966c681461018f575f5ffd5b806306fdde03146100ff578063095ea7b31461011d57806318160ddd1461014057806323b872dd14610152575b5f5ffd5b610107610273565b6040516101149190610cd6565b60405180910390f35b61013061012b366004610d0a565b610303565b6040519015158152602001610114565b6002545b604051908152602001610114565b610130610160366004610d32565b61031c565b60405160128152602001610114565b6101446b033b2e3c9fd0803ce800000081565b61014461033f565b6101a261019d366004610d6c565b61034d565b005b6101446101b2366004610d83565b6001600160a01b03165f9081526020819052604090205490565b6101a26101da366004610d0a565b61035a565b6101446101ed366004610d83565b610373565b6101fa610390565b6040516101149796959493929190610d9c565b6101076103d2565b610130610223366004610d0a565b6103e1565b6101a2610236366004610e32565b6103ee565b610144610249366004610e9f565b6001600160a01b039182165f90815260016020908152604080832093909416825291909152205490565b60606003805461028290610ed0565b80601f01602080910402602001604051908101604052809291908181526020018280546102ae90610ed0565b80156102f95780601f106102d0576101008083540402835291602001916102f9565b820191905f5260205f20905b8154815290600101906020018083116102dc57829003601f168201915b5050505050905090565b5f33610310818585610529565b60019150505b92915050565b5f3361032985828561053b565b6103348585856105b7565b506001949350505050565b5f610348610614565b905090565b610357338261073d565b50565b61036582338361053b565b61036f828261073d565b5050565b6001600160a01b0381165f90815260076020526040812054610316565b5f6060805f5f5f60606103a1610771565b6103a961079e565b604080515f80825260208201909252600f60f81b9b939a50919850469750309650945092509050565b60606004805461028290610ed0565b5f336103108185856105b7565b834211156104175760405163313c898160e11b8152600481018590526024015b60405180910390fd5b5f7f6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c98888886104628c6001600160a01b03165f90815260076020526040902080546001810190915590565b6040805160208101969096526001600160a01b0394851690860152929091166060840152608083015260a082015260c0810186905260e0016040516020818303038152906040528051906020012090505f6104bc826107cb565b90505f6104cb828787876107f7565b9050896001600160a01b0316816001600160a01b031614610512576040516325c0072360e11b81526001600160a01b0380831660048301528b16602482015260440161040e565b61051d8a8a8a610529565b50505050505050505050565b6105368383836001610823565b505050565b6001600160a01b038381165f908152600160209081526040808320938616835292905220545f198110156105b157818110156105a357604051637dc7a0d960e11b81526001600160a01b0384166004820152602481018290526044810183905260640161040e565b6105b184848484035f610823565b50505050565b6001600160a01b0383166105e057604051634b637e8f60e11b81525f600482015260240161040e565b6001600160a01b0382166106095760405163ec442f0560e01b81525f600482015260240161040e565b6105368383836108f5565b5f306001600160a01b037f00000000000000000000000000000000000000000000000000000000000000001614801561066c57507f000000000000000000000000000000000000000000000000000000000000000046145b1561069657507f000000000000000000000000000000000000000000000000000000000000000090565b610348604080517f8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f60208201527f0000000000000000000000000000000000000000000000000000000000000000918101919091527f000000000000000000000000000000000000000000000000000000000000000060608201524660808201523060a08201525f9060c00160405160208183030381529060405280519060200120905090565b6001600160a01b03821661076657604051634b637e8f60e11b81525f600482015260240161040e565b61036f825f836108f5565b60606103487f00000000000000000000000000000000000000000000000000000000000000006005610a1b565b60606103487f00000000000000000000000000000000000000000000000000000000000000006006610a1b565b5f6103166107d7610614565b8360405161190160f01b8152600281019290925260228201526042902090565b5f5f5f5f61080788888888610ac4565b9250925092506108178282610b8c565b50909695505050505050565b6001600160a01b03841661084c5760405163e602df0560e01b81525f600482015260240161040e565b6001600160a01b03831661087557604051634a1406b160e11b81525f600482015260240161040e565b6001600160a01b038085165f90815260016020908152604080832093871683529290522082905580156105b157826001600160a01b0316846001600160a01b03167f8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925846040516108e791815260200190565b60405180910390a350505050565b6001600160a01b03831661091f578060025f8282546109149190610f08565b9091555061098f9050565b6001600160a01b0383165f90815260208190526040902054818110156109715760405163391434e360e21b81526001600160a01b0385166004820152602481018290526044810183905260640161040e565b6001600160a01b0384165f9081526020819052604090209082900390555b6001600160a01b0382166109ab576002805482900390556109c9565b6001600160a01b0382165f9081526020819052604090208054820190555b816001600160a01b0316836001600160a01b03167fddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef83604051610a0e91815260200190565b60405180910390a3505050565b606060ff8314610a3557610a2e83610c44565b9050610316565b818054610a4190610ed0565b80601f0160208091040260200160405190810160405280929190818152602001828054610a6d90610ed0565b8015610ab85780601f10610a8f57610100808354040283529160200191610ab8565b820191905f5260205f20905b815481529060010190602001808311610a9b57829003601f168201915b50505050509050610316565b5f80807f7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0841115610afd57505f91506003905082610b82565b604080515f808252602082018084528a905260ff891692820192909252606081018790526080810186905260019060a0016020604051602081039080840390855afa158015610b4e573d5f5f3e3d5ffd5b5050604051601f1901519150506001600160a01b038116610b7957505f925060019150829050610b82565b92505f91508190505b9450945094915050565b5f826003811115610b9f57610b9f610f27565b03610ba8575050565b6001826003811115610bbc57610bbc610f27565b03610bda5760405163f645eedf60e01b815260040160405180910390fd5b6002826003811115610bee57610bee610f27565b03610c0f5760405163fce698f760e01b81526004810182905260240161040e565b6003826003811115610c2357610c23610f27565b0361036f576040516335e2f38360e21b81526004810182905260240161040e565b60605f610c5083610c81565b6040805160208082528183019092529192505f91906020820181803683375050509182525060208101929092525090565b5f60ff8216601f81111561031657604051632cd44ac360e21b815260040160405180910390fd5b5f81518084528060208401602086015e5f602082860101526020601f19601f83011685010191505092915050565b602081525f610ce86020830184610ca8565b9392505050565b80356001600160a01b0381168114610d05575f5ffd5b919050565b5f5f60408385031215610d1b575f5ffd5b610d2483610cef565b946020939093013593505050565b5f5f5f60608486031215610d44575f5ffd5b610d4d84610cef565b9250610d5b60208501610cef565b929592945050506040919091013590565b5f60208284031215610d7c575f5ffd5b5035919050565b5f60208284031215610d93575f5ffd5b610ce882610cef565b60ff60f81b8816815260e060208201525f610dba60e0830189610ca8565b8281036040840152610dcc8189610ca8565b606084018890526001600160a01b038716608085015260a0840186905283810360c0850152845180825260208087019350909101905f5b81811015610e21578351835260209384019390920191600101610e03565b50909b9a5050505050505050505050565b5f5f5f5f5f5f5f60e0888a031215610e48575f5ffd5b610e5188610cef565b9650610e5f60208901610cef565b95506040880135945060608801359350608088013560ff81168114610e82575f5ffd5b9699959850939692959460a0840135945060c09093013592915050565b5f5f60408385031215610eb0575f5ffd5b610eb983610cef565b9150610ec760208401610cef565b90509250929050565b600181811c90821680610ee457607f821691505b602082108103610f0257634e487b7160e01b5f52602260045260245ffd5b50919050565b8082018082111561031657634e487b7160e01b5f52601160045260245ffd5b634e487b7160e01b5f52602160045260245ffdfea2646970667358221220fdf5bd66803d880937612185d18dc20f61b7acd2a0cdb44cd1a973d4c716257364736f6c634300081c0033';
+const ABI = [{"type": "constructor", "inputs": [{"name": "distributor", "type": "address", "internalType": "address"}], "stateMutability": "nonpayable"}, {"type": "function", "name": "DOMAIN_SEPARATOR", "inputs": [], "outputs": [{"name": "", "type": "bytes32", "internalType": "bytes32"}], "stateMutability": "view"}, {"type": "function", "name": "MAX_SUPPLY", "inputs": [], "outputs": [{"name": "", "type": "uint256", "internalType": "uint256"}], "stateMutability": "view"}, {"type": "function", "name": "allowance", "inputs": [{"name": "owner", "type": "address", "internalType": "address"}, {"name": "spender", "type": "address", "internalType": "address"}], "outputs": [{"name": "", "type": "uint256", "internalType": "uint256"}], "stateMutability": "view"}, {"type": "function", "name": "approve", "inputs": [{"name": "spender", "type": "address", "internalType": "address"}, {"name": "value", "type": "uint256", "internalType": "uint256"}], "outputs": [{"name": "", "type": "bool", "internalType": "bool"}], "stateMutability": "nonpayable"}, {"type": "function", "name": "balanceOf", "inputs": [{"name": "account", "type": "address", "internalType": "address"}], "outputs": [{"name": "", "type": "uint256", "internalType": "uint256"}], "stateMutability": "view"}, {"type": "function", "name": "burn", "inputs": [{"name": "value", "type": "uint256", "internalType": "uint256"}], "outputs": [], "stateMutability": "nonpayable"}, {"type": "function", "name": "burnFrom", "inputs": [{"name": "account", "type": "address", "internalType": "address"}, {"name": "value", "type": "uint256", "internalType": "uint256"}], "outputs": [], "stateMutability": "nonpayable"}, {"type": "function", "name": "decimals", "inputs": [], "outputs": [{"name": "", "type": "uint8", "internalType": "uint8"}], "stateMutability": "view"}, {"type": "function", "name": "eip712Domain", "inputs": [], "outputs": [{"name": "fields", "type": "bytes1", "internalType": "bytes1"}, {"name": "name", "type": "string", "internalType": "string"}, {"name": "version", "type": "string", "internalType": "string"}, {"name": "chainId", "type": "uint256", "internalType": "uint256"}, {"name": "verifyingContract", "type": "address", "internalType": "address"}, {"name": "salt", "type": "bytes32", "internalType": "bytes32"}, {"name": "extensions", "type": "uint256[]", "internalType": "uint256[]"}], "stateMutability": "view"}, {"type": "function", "name": "name", "inputs": [], "outputs": [{"name": "", "type": "string", "internalType": "string"}], "stateMutability": "view"}, {"type": "function", "name": "nonces", "inputs": [{"name": "owner", "type": "address", "internalType": "address"}], "outputs": [{"name": "", "type": "uint256", "internalType": "uint256"}], "stateMutability": "view"}, {"type": "function", "name": "permit", "inputs": [{"name": "owner", "type": "address", "internalType": "address"}, {"name": "spender", "type": "address", "internalType": "address"}, {"name": "value", "type": "uint256", "internalType": "uint256"}, {"name": "deadline", "type": "uint256", "internalType": "uint256"}, {"name": "v", "type": "uint8", "internalType": "uint8"}, {"name": "r", "type": "bytes32", "internalType": "bytes32"}, {"name": "s", "type": "bytes32", "internalType": "bytes32"}], "outputs": [], "stateMutability": "nonpayable"}, {"type": "function", "name": "symbol", "inputs": [], "outputs": [{"name": "", "type": "string", "internalType": "string"}], "stateMutability": "view"}, {"type": "function", "name": "totalSupply", "inputs": [], "outputs": [{"name": "", "type": "uint256", "internalType": "uint256"}], "stateMutability": "view"}, {"type": "function", "name": "transfer", "inputs": [{"name": "to", "type": "address", "internalType": "address"}, {"name": "value", "type": "uint256", "internalType": "uint256"}], "outputs": [{"name": "", "type": "bool", "internalType": "bool"}], "stateMutability": "nonpayable"}, {"type": "function", "name": "transferFrom", "inputs": [{"name": "from", "type": "address", "internalType": "address"}, {"name": "to", "type": "address", "internalType": "address"}, {"name": "value", "type": "uint256", "internalType": "uint256"}], "outputs": [{"name": "", "type": "bool", "internalType": "bool"}], "stateMutability": "nonpayable"}, {"type": "event", "name": "Approval", "inputs": [{"name": "owner", "type": "address", "indexed": true, "internalType": "address"}, {"name": "spender", "type": "address", "indexed": true, "internalType": "address"}, {"name": "value", "type": "uint256", "indexed": false, "internalType": "uint256"}], "anonymous": false}, {"type": "event", "name": "EIP712DomainChanged", "inputs": [], "anonymous": false}, {"type": "event", "name": "Transfer", "inputs": [{"name": "from", "type": "address", "indexed": true, "internalType": "address"}, {"name": "to", "type": "address", "indexed": true, "internalType": "address"}, {"name": "value", "type": "uint256", "indexed": false, "internalType": "uint256"}], "anonymous": false}, {"type": "error", "name": "ECDSAInvalidSignature", "inputs": []}, {"type": "error", "name": "ECDSAInvalidSignatureLength", "inputs": [{"name": "length", "type": "uint256", "internalType": "uint256"}]}, {"type": "error", "name": "ECDSAInvalidSignatureS", "inputs": [{"name": "s", "type": "bytes32", "internalType": "bytes32"}]}, {"type": "error", "name": "ERC20InsufficientAllowance", "inputs": [{"name": "spender", "type": "address", "internalType": "address"}, {"name": "allowance", "type": "uint256", "internalType": "uint256"}, {"name": "needed", "type": "uint256", "internalType": "uint256"}]}, {"type": "error", "name": "ERC20InsufficientBalance", "inputs": [{"name": "sender", "type": "address", "internalType": "address"}, {"name": "balance", "type": "uint256", "internalType": "uint256"}, {"name": "needed", "type": "uint256", "internalType": "uint256"}]}, {"type": "error", "name": "ERC20InvalidApprover", "inputs": [{"name": "approver", "type": "address", "internalType": "address"}]}, {"type": "error", "name": "ERC20InvalidReceiver", "inputs": [{"name": "receiver", "type": "address", "internalType": "address"}]}, {"type": "error", "name": "ERC20InvalidSender", "inputs": [{"name": "sender", "type": "address", "internalType": "address"}]}, {"type": "error", "name": "ERC20InvalidSpender", "inputs": [{"name": "spender", "type": "address", "internalType": "address"}]}, {"type": "error", "name": "ERC2612ExpiredSignature", "inputs": [{"name": "deadline", "type": "uint256", "internalType": "uint256"}]}, {"type": "error", "name": "ERC2612InvalidSigner", "inputs": [{"name": "signer", "type": "address", "internalType": "address"}, {"name": "owner", "type": "address", "internalType": "address"}]}, {"type": "error", "name": "InvalidAccountNonce", "inputs": [{"name": "account", "type": "address", "internalType": "address"}, {"name": "currentNonce", "type": "uint256", "internalType": "uint256"}]}, {"type": "error", "name": "InvalidShortString", "inputs": []}, {"type": "error", "name": "StringTooLong", "inputs": [{"name": "str", "type": "string", "internalType": "string"}]}];
+const NETS = [
+  { id: 46630, hex: '0xb626', name: 'Robinhood Chain Testnet', tip: 'Practice run first. Free test ETH from the faucet.', rpc: 'https://rpc.testnet.chain.robinhood.com', explorer: 'https://explorer.testnet.chain.robinhood.com' },
+  { id: 4663, hex: '0x1237', name: 'Robinhood Chain Mainnet', tip: 'The real launch. Needs real ETH for gas.', rpc: 'https://rpc.mainnet.chain.robinhood.com', explorer: 'https://robinhoodchain.blockscout.com' },
+];
+if (new URLSearchParams(location.search).has('local')) NETS.push({ id: 31337, hex: '0x7a69', name: 'Local test chain', tip: 'dev only', rpc: 'http://127.0.0.1:8545', explorer: '' });
+let NET = NETS[0], W = null, ACCT = null;
+const $ = (id) => document.getElementById(id);
+const say = (el, text, cls = '') => { $(el).className = 'msg ' + cls; $(el).textContent = text; };
+const errText = (e) => e?.code === 4001 || e?.code === 'ACTION_REJECTED' ? 'You cancelled it in your wallet.' : (e?.shortMessage || e?.message || String(e));
+
+function drawNets() {
+  $('nets').innerHTML = '';
+  for (const n of NETS) {
+    const b = document.createElement('button'); b.className = 'net' + (n === NET ? ' sel' : '');
+    b.innerHTML = `${n.name}<small>${n.tip}</small>`; b.onclick = () => { NET = n; drawNets(); check(); };
+    $('nets').append(b);
+  }
+}
+const found = new Map();
+window.addEventListener('eip6963:announceProvider', (e) => { const d = e.detail; if (d?.info && d.provider) { found.set(d.info.rdns || d.info.uuid, d); drawWallets(); } });
+window.dispatchEvent(new Event('eip6963:requestProvider'));
+function drawWallets() {
+  let list = [...found.values()].map((d) => ({ name: d.info.name, provider: d.provider, okx: /okx/i.test(d.info.rdns + d.info.name) }));
+  if (!list.length && window.okxwallet) list.push({ name: 'OKX Wallet', provider: window.okxwallet, okx: true });
+  if (!list.length && window.ethereum) list.push({ name: 'Browser wallet', provider: window.ethereum });
+  list.sort((a, b) => b.okx - a.okx);
+  $('wallets').innerHTML = '';
+  if (!list.length) { say('wmsg', 'No wallet found. Open this page in a browser with the OKX Wallet extension, or in the OKX app\'s browser.', 'warn'); return; }
+  for (const w of list) { const b = document.createElement('button'); b.textContent = 'Connect ' + w.name; b.onclick = () => connect(w); $('wallets').append(b); }
+}
+async function connect(w) {
+  try {
+    W = w.provider;
+    const accts = await W.request({ method: 'eth_requestAccounts' });
+    ACCT = ethers.getAddress(accts[0]);
+    W.on?.('accountsChanged', (a) => { ACCT = a[0] ? ethers.getAddress(a[0]) : null; check(); });
+    W.on?.('chainChanged', () => check());
+    check();
+  } catch (e) { say('wmsg', errText(e), 'bad'); }
+}
+async function switchNet() {
+  try { await W.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: NET.hex }] }); }
+  catch (e) {
+    if (e?.code === 4902 || /unrecognized|not added|unknown/i.test(e?.message || '')) await W.request({ method: 'wallet_addEthereumChain', params: [{ chainId: NET.hex, chainName: NET.name, nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 }, rpcUrls: [NET.rpc], blockExplorerUrls: NET.explorer ? [NET.explorer] : undefined }] });
+    else throw e;
+  }
+}
+async function check() {
+  $('deploy').disabled = true;
+  if (!W || !ACCT) return;
+  if (ACCT !== OWNER) { say('wmsg', `Connected ${ACCT}. That is not the launch wallet. Switch to ${OWNER} in OKX Wallet.`, 'bad'); return; }
+  try {
+    const p = new ethers.BrowserProvider(W);
+    const chain = Number((await p.getNetwork()).chainId);
+    if (chain !== NET.id) { say('wmsg', `Launch wallet connected. Switching your wallet to ${NET.name}…`, 'warn'); await switchNet(); return; }
+    const bal = await p.getBalance(ACCT);
+    say('wmsg', `Launch wallet connected on ${NET.name}. Balance: ${Number(ethers.formatEther(bal)).toFixed(5)} ETH`, bal > 0n ? 'ok' : 'bad');
+    if (bal === 0n) { say('dmsg', NET.id === 46630 ? 'This wallet has no test ETH. Get some at faucet.testnet.chain.robinhood.com, then come back.' : 'This wallet has no ETH on Robinhood Chain. Bridge or send a little ETH to it for gas.', 'warn'); return; }
+    say('dmsg', ''); $('deploy').disabled = false;
+  } catch (e) { say('wmsg', errText(e), 'bad'); }
+}
+$('deploy').onclick = async () => {
+  $('deploy').disabled = true;
+  try {
+    const p = new ethers.BrowserProvider(W); const s = await p.getSigner();
+    if (ethers.getAddress(await s.getAddress()) !== OWNER) throw new Error('Wrong wallet. Use the launch wallet.');
+    if (Number((await p.getNetwork()).chainId) !== NET.id) throw new Error('Wrong network. Pick it again above.');
+    say('dmsg', 'Confirm the transaction in your wallet…');
+    const f = new ethers.ContractFactory(ABI, BYTECODE, s);
+    const c = await f.deploy(OWNER);
+    const tx = c.deploymentTransaction();
+    say('dmsg', `Sent. Waiting for the chain… tx ${tx.hash}`, 'warn');
+    await c.waitForDeployment();
+    const ca = ethers.getAddress(await c.getAddress());
+    say('dmsg', `Deployed on ${NET.name}.`, 'ok');
+    $('done').hidden = false; $('ca').textContent = ca;
+    $('exlink').href = NET.explorer ? `${NET.explorer}/address/${ca}` : '#';
+    const t = new ethers.Contract(ca, ABI, p);
+    const [name, sym, sup, held, rc] = await Promise.all([t.name(), t.symbol(), t.totalSupply(), t.balanceOf(OWNER), p.getTransactionReceipt(tx.hash)]);
+    const items = [
+      [name === 'VETO' && sym === 'VETO', `Name and ticker: ${name} / ${sym}`],
+      [sup === ethers.parseEther('1000000000'), `Total supply: ${Number(ethers.formatEther(sup)).toLocaleString()}`],
+      [held === sup, `Launch wallet holds: ${Number(ethers.formatEther(held)).toLocaleString()} (100%)`],
+      [ethers.getAddress(rc.from) === OWNER, `Deployed by (creator): ${rc.from}`],
+    ];
+    $('checks').innerHTML = items.map(([ok, t]) => `<li class="${ok ? 'ok' : 'bad'}">${ok ? '✓' : '✗'} ${t}</li>`).join('');
+    if (NET.explorer) publishSource(ca);
+  } catch (e) { say('dmsg', errText(e), 'bad'); $('deploy').disabled = false; }
+};
+$('copy').onclick = () => { navigator.clipboard?.writeText($('ca').textContent); $('copy').textContent = 'Copied'; };
+async function publishSource(ca) {
+  say('vmsg', 'Publishing the source code on the explorer so anyone can read it…');
+  try {
+    const input = await (await fetch('/verify-input.json')).text();
+    const args = ethers.AbiCoder.defaultAbiCoder().encode(['address'], [OWNER]).slice(2);
+    const post = async (params, method = 'POST') => {
+      const body = new URLSearchParams(params);
+      const r = method === 'POST' ? await fetch(NET.explorer + '/api', { method, body }) : await fetch(NET.explorer + '/api?' + body);
+      return r.json();
+    };
+    await new Promise((r) => setTimeout(r, 8000)); // let the explorer index the new contract
+    const sub = await post({ module: 'contract', action: 'verifysourcecode', codeformat: 'solidity-standard-json-input', contractaddress: ca, contractname: 'src/VetoToken.sol:VetoToken', compilerversion: 'v0.8.28+commit.7893614a', sourceCode: input, constructorArguements: args, licenseType: '3' });
+    if (sub.status !== '1') throw new Error(sub.result);
+    for (let i = 0; i < 20; i++) {
+      await new Promise((r) => setTimeout(r, 3000));
+      const c = await post({ module: 'contract', action: 'checkverifystatus', guid: sub.result }, 'GET');
+      if (/pass|verified/i.test(c.result)) return say('vmsg', '✓ Source code published. The explorer shows a green "verified" tick.', 'ok');
+      if (!/pending|queue/i.test(c.result)) throw new Error(c.result);
+    }
+    throw new Error('still pending');
+  } catch (e) { say('vmsg', 'Could not publish the source automatically (' + errText(e) + '). Send the CA to Claude and it will be published another way.', 'warn'); }
+}
+drawNets(); setTimeout(drawWallets, 300);
+</script></body></html>
