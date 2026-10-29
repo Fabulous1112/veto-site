@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>VETO Terms</title>
+<meta name="description" content="Plain-language terms for using VETO on testnet.">
+<meta name="theme-color" content="#0b0e15">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Reading pages for the VETO app: one centred column, same slate-night palette as the app. */
+:root { --bg:#0b0e15; --panel:#121722; --line:#242c3d; --ink:#e9edf6; --mute:#8b94a9; --accent:#6b78ff; --ok:#3ddc97; --no:#ff5468; --warn:#ffb547;
+  --f-display:"Bricolage Grotesque","Arial Narrow",system-ui,sans-serif; --f-body:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif; --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme: dark; padding-top: env(safe-area-inset-top,0px); padding-bottom: env(safe-area-inset-bottom,0px); }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.65 var(--f-body); -webkit-font-smoothing:antialiased; }
+.top { border-bottom:1px solid var(--line); padding-block:14px; padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); }
+.top div { max-width:760px; margin:0 auto; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.top a.brand { display:flex; align-items:center; gap:10px; color:var(--ink); text-decoration:none; font:800 20px/1 var(--f-display); letter-spacing:.02em; margin-right:auto; }
+.top nav { display:flex; gap:4px 16px; flex-wrap:wrap; }
+.top nav a { color:var(--mute); text-decoration:none; font-weight:600; font-size:14px; padding:8px 0; }
+.top nav a[aria-current] { color:var(--ink); }
+.top nav a:hover { color:var(--accent); }
+main { max-width:760px; margin:0 auto; padding-block:40px 64px; padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); }
+.eyebrow { font:600 11.5px/1 var(--f-mono); letter-spacing:.14em; text-transform:uppercase; color:var(--mute); }
+h1 { font:800 clamp(34px,7vw,52px)/1.03 var(--f-display); margin:10px 0 14px; text-wrap:balance; }
+.lead { color:var(--mute); font-size:18px; margin:0 0 28px; max-width:62ch; }
+h2 { font:800 24px/1.2 var(--f-display); margin:40px 0 10px; text-wrap:balance; }
+h3 { font-size:17px; margin:24px 0 6px; }
+p, li { max-width:66ch; }
+ul { padding-left:20px; } li { margin:6px 0; }
+a { color:var(--accent); }
+code { font:14px var(--f-mono); background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:1px 6px; }
+.status { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px; margin:6px 0 10px; }
+.status div { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px; }
+.status b { display:block; font:700 18px/1.2 var(--f-display); margin-top:6px; }
+.status small { color:var(--mute); font-size:13px; }
+.yes b { color:var(--ok); } .no b { color:var(--no); } .wait b { color:var(--warn); }
+.two { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.two > div { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:6px 20px 12px; min-width:0; }
+.two h3 { margin-top:14px; }
+@media (max-width:640px) { .two { grid-template-columns:1fr; } }
+details { border-bottom:1px solid var(--line); padding:4px 0; }
+summary { cursor:pointer; font-weight:600; font-size:17px; padding:14px 0; list-style:none; display:flex; justify-content:space-between; gap:12px; }
+summary::-webkit-details-marker { display:none; }
+summary::after { content:"+"; color:var(--accent); font:600 20px/1 var(--f-mono); }
+details[open] summary::after { content:"−"; }
+details p { margin:0 0 16px; color:#c7cddb; }
+.note { background:color-mix(in srgb,var(--warn) 8%,var(--panel)); border:1px solid color-mix(in srgb,var(--warn) 35%,var(--line)); border-radius:14px; padding:14px 16px; font-size:14.5px; }
+footer { border-top:1px solid var(--line); margin-top:48px; padding-top:18px; color:var(--mute); font-size:13px; }
+:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+</style>
+</head>
+<body>
+<header class="top"><div>
+  <a class="brand" href="index.html"><svg width="30" height="30" viewBox="0 0 64 64" aria-hidden="true"><rect x="2" y="2" width="60" height="60" rx="18" fill="#6b78ff"/><path d="M17 18 L32 46 L47 18" fill="none" stroke="#0b0e15" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 33 H51" stroke="#0b0e15" stroke-width="5" stroke-linecap="round"/></svg>VETO</a>
+  <nav><a href="index.html">App</a><a href="security.html">Security</a><a href="faq.html">FAQ</a><a href="terms.html" aria-current=page>Terms</a><a href="privacy.html">Privacy</a></nav>
+</div></header>
+<main>
+
+<span class="eyebrow">Terms</span>
+<h1>Terms of use</h1>
+<p class="lead">The plain-language rules for using VETO while it's in testing.</p>
+<p class="note">These terms cover the testnet version of VETO. They will be reviewed and replaced by lawyer-reviewed terms before any mainnet launch or token.</p>
+<h2>1. What VETO is</h2>
+<p>VETO is experimental, open-source software: a website, smart contracts and a Telegram bot that let an AI agent propose trades which your own vault contract checks against rules you set.</p>
+<h2>2. Testnet only, no real value</h2>
+<p>VETO currently runs on Robinhood Chain testnet with test tokens that have no value. Don't send real funds to VETO contracts. The Home, Agent and Rules tabs on the website are simulations.</p>
+<h2>3. You control your wallet</h2>
+<p>You are responsible for your wallet, its keys and every transaction you sign. VETO never asks for your seed phrase. Anyone who does is not VETO.</p>
+<h2>4. No advice, no guarantees</h2>
+<p>Nothing VETO shows or says is financial, investment, legal or tax advice. The software is provided "as is", without warranties of any kind. Software can have bugs, and the contracts are not yet audited.</p>
+<h2>5. Limitation of liability</h2>
+<p>To the fullest extent the law allows, the people who build VETO aren't liable for any loss arising from using it, including losses from bugs, network problems, third-party apps or your own trading decisions.</p>
+<h2>6. Acceptable use</h2>
+<p>Don't use VETO to break the law, attack the network or other users, or get around restrictions that apply to you, including where you live. Tokenized stocks and crypto are restricted in some countries; it's your responsibility to follow your local rules.</p>
+<h2>7. The $VETO token</h2>
+<p>$VETO has not launched. Nothing on this site is an offer to sell or buy any token. Any token launch would come with its own terms.</p>
+<h2>8. Changes</h2>
+<p>We may update these terms as VETO develops. The date at the bottom of the page shows the latest version.</p>
+<footer>Last updated October 29, 2026. VETO is experimental software on Robinhood Chain testnet. Nothing here is financial or legal advice.</footer>
+</main>
+</body>
+</html>

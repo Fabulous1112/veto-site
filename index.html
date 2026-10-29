@@ -278,7 +278,7 @@ td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-al
     <button class="nav-btn" data-go="stake"><svg><use href="#i-stake"/></svg><span>Sentinels</span></button>
     <button class="nav-btn" data-go="wallet"><svg><use href="#i-wallet"/></svg><span>Vault</span></button>
     <button class="btn primary cta" data-connect><svg width="18" height="18"><use href="#i-wallet"/></svg><span class="connect-label">Connect wallet</span></button>
-    <div class="rail-foot">Robinhood Chain · Simulation mode until contracts are audited and deployed.</div>
+    <div class="rail-foot">Home, Agent and Rules are a demo. Real vaults run on Robinhood Chain testnet in the Vault tab. Unaudited: never use real funds.</div>
   </nav>
 
   <main class="main">
@@ -290,6 +290,7 @@ td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-al
 
     <!-- HOME -->
     <section class="view" id="v-home" data-title="Home" data-sub="Every move your agent wants to make, and what VETO decided.">
+      <div class="demo-bar" role="note"><span class="pill warn">DEMO</span><span>This feed is a simulation that shows how VETO works. No real money moves here. <a href="#wallet" data-go="wallet">Your real vault →</a></span></div>
       <div class="section status">
         <div class="status-row">
           <span class="label">Vault status</span>
@@ -305,7 +306,7 @@ td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-al
         <div class="stats">
           <div class="stat"><span class="label">Approved</span><b id="nOk">0</b><small>today</small></div>
           <div class="stat"><span class="label">Vetoed</span><b id="nNo" style="color:var(--no)">0</b><small>today</small></div>
-          <div class="stat"><span class="label">Saved</span><b id="nSaved">$0</b><small>blocked value</small></div>
+          <div class="stat"><span class="label">Saved</span><b id="nSaved">$0</b><small>blocked (demo)</small></div>
         </div>
       </div>
 
@@ -335,6 +336,7 @@ td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-al
 
     <!-- AGENT -->
     <section class="view" id="v-agent" hidden data-title="Agent" data-sub="Chat with your trading agent. VETO checks every request before it can sign.">
+      <div class="demo-bar" role="note"><span class="pill warn">DEMO</span><span>A demo of the chat. The real agent lives in the VETO Telegram bot. <a href="#wallet" data-go="wallet">Your real vault →</a></span></div>
       <div class="chat" id="chat"></div>
       <div class="chatbar">
         <div class="chips">
@@ -352,6 +354,7 @@ td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-al
 
     <!-- RULES -->
     <section class="view" id="v-rules" hidden data-title="Rules" data-sub="Limits your agent cannot talk its way past. Enforced by the vault contract, not a prompt.">
+      <div class="demo-bar" role="note"><span class="pill warn">DEMO</span><span>These sliders drive the demo. Your real, on-chain rules are saved in the Vault tab. <a href="#wallet" data-go="wallet">Your real vault →</a></span></div>
       <div class="section rule">
         <div class="rule-head"><h3>Mode</h3>
           <div class="seg" role="group" aria-label="Mode">
@@ -454,6 +457,7 @@ td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-al
           </div>
         </form>
       </div>
+      <div class="section" id="contractsBox" hidden></div>
       <div class="section">
         <span class="label">Network</span>
         <dl class="kv" style="margin-top:12px">
@@ -465,6 +469,12 @@ td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-al
       </div>
       <div class="section note">Connecting only reads your address and balance. VETO never asks for your seed phrase, and this page never sends a transaction without you confirming it in your wallet.</div>
     </section>
+    <footer class="foot">
+      <nav aria-label="About VETO">
+        <a href="security.html">Security</a><a href="faq.html">FAQ</a><a href="terms.html">Terms</a><a href="privacy.html">Privacy</a><a href="https://github.com/Fabulous1112/veto-contracts" target="_blank" rel="noopener">Source code</a>
+      </nav>
+      <p>VETO is experimental software on Robinhood Chain testnet. The contracts are not audited yet. Use test tokens only. Nothing here is financial advice, and $VETO has not launched.</p>
+    </footer>
   </main>
 
   <aside class="aside" aria-label="Threat radar">
@@ -483,7 +493,7 @@ td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-al
         <dt>You can</dt><dd>freeze, withdraw</dd>
       </div>
     </div>
-    <p class="note" style="padding:0 4px">Activity on this page is a simulation. Stock tokens are shown as examples.</p>
+    <p class="note" style="padding:0 4px">The Home feed and Agent chat are a simulation. Stock tokens are shown as examples.</p>
   </aside>
 </div>
 
@@ -1277,6 +1287,31 @@ td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-al
     }, true);
   }
 
+  /* Every contract, with an explorer link, so anyone can check what they're signing with. */
+  function showContracts() {
+    const box = document.getElementById('contractsBox');
+    const d = S.dep;
+    if (!box || !d) return;
+    const rows = [
+      ['Vault factory', d.VetoVaultFactory, 'Creates vaults; you own yours'],
+      ['Sentinel threat list', d.SentinelRegistry, 'Addresses every vault blocks'],
+      ['VETO token (test)', d.VetoToken, 'Not launched on mainnet'],
+      ['Test exchange', d.TestRouter, 'Fixed test prices, testnet only'],
+      ['Test USDG', d.tUSDG, 'No value'],
+      ['Agent (VETO bot)', d.agent, 'Can only propose moves'],
+    ].filter((r) => r[1]);
+    const ex = A.CHAIN.explorer;
+    box.hidden = false;
+    box.innerHTML = `<div class="status-row" style="margin-bottom:10px"><span class="label">Contracts · check before you sign</span>
+        <a class="note" href="https://github.com/Fabulous1112/veto-contracts" target="_blank" rel="noopener">Source code →</a></div>
+      <div class="tbl-wrap"><table><thead><tr><th>Contract</th><th>Address</th></tr></thead><tbody>
+      ${rows.map(([n, a, sub]) => `<tr><td><b>${A.esc(n)}</b><div class="note">${A.esc(sub)}</div></td><td class="mono" style="overflow-wrap:anywhere">${ex ? `<a href="${ex}/address/${A.esc(a)}" target="_blank" rel="noopener">${A.esc(short(a))}</a>` : A.esc(short(a))} <button class="chip" type="button" data-copy="${A.esc(a)}">Copy</button></td></tr>`).join('')}
+      </tbody></table></div>`;
+    box.querySelectorAll('[data-copy]').forEach((b) => b.addEventListener('click', () => {
+      navigator.clipboard.writeText(b.dataset.copy).then(() => A.toast('Address copied'), () => A.toast(b.dataset.copy));
+    }));
+  }
+
   async function boot() {
     if (!E) {
       panel.innerHTML = '<div class="section note">The blockchain library didn’t load. Check your connection and reload.</div>';
@@ -1300,6 +1335,7 @@ td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-al
       set('netExplorer', A.CHAIN.explorer ? `<a href="${A.CHAIN.explorer}" target="_blank" rel="noopener">${A.esc(A.CHAIN.explorer.replace(/^https?:\/\//, ''))}</a>` : '—');
       liveThreatCheck();
       stats();
+      showContracts();
       setInterval(() => { if (!document.hidden) { stats(); if (!S.busy) load(); } }, 30000);
     }
     window.addEventListener('veto:view', (e) => { if (e.detail === 'stake') stats(); });
@@ -1465,6 +1501,21 @@ document.addEventListener('pointermove', (e) => {
   c.style.setProperty('--sy', `${e.clientY - r.top}px`);
 }, { passive: true });
 </script>
+<style>
+.demo-bar { display: flex; gap: 10px; align-items: center; padding: 10px 18px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--warn) 7%, var(--bg)); font-size: 13px; color: var(--mute); }
+.demo-bar .pill { flex: none; }
+.demo-bar a { color: var(--accent); font-weight: 600; white-space: nowrap; }
+.foot { padding: 22px 18px 28px; display: grid; gap: 10px; border-top: 1px solid var(--line); }
+.foot nav { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.foot nav a { color: var(--ink); font-weight: 600; font-size: 13.5px; text-decoration: none; padding: 6px 0; }
+.foot nav a:hover { color: var(--accent); }
+.foot p { margin: 0; font-size: 12.5px; color: var(--mute); max-width: 62ch; }
+@media (max-width: 700px) {
+  .demo-bar, .foot { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .demo-bar { align-items: flex-start; }
+  .foot nav a { padding: 10px 0; }
+}
+</style>
 
 </body>
 </html>

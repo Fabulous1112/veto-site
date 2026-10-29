@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>VETO FAQ</title>
+<meta name="description" content="Short answers about how VETO works, what's live and what's coming.">
+<meta name="theme-color" content="#0b0e15">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Reading pages for the VETO app: one centred column, same slate-night palette as the app. */
+:root { --bg:#0b0e15; --panel:#121722; --line:#242c3d; --ink:#e9edf6; --mute:#8b94a9; --accent:#6b78ff; --ok:#3ddc97; --no:#ff5468; --warn:#ffb547;
+  --f-display:"Bricolage Grotesque","Arial Narrow",system-ui,sans-serif; --f-body:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif; --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme: dark; padding-top: env(safe-area-inset-top,0px); padding-bottom: env(safe-area-inset-bottom,0px); }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.65 var(--f-body); -webkit-font-smoothing:antialiased; }
+.top { border-bottom:1px solid var(--line); padding-block:14px; padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); }
+.top div { max-width:760px; margin:0 auto; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.top a.brand { display:flex; align-items:center; gap:10px; color:var(--ink); text-decoration:none; font:800 20px/1 var(--f-display); letter-spacing:.02em; margin-right:auto; }
+.top nav { display:flex; gap:4px 16px; flex-wrap:wrap; }
+.top nav a { color:var(--mute); text-decoration:none; font-weight:600; font-size:14px; padding:8px 0; }
+.top nav a[aria-current] { color:var(--ink); }
+.top nav a:hover { color:var(--accent); }
+main { max-width:760px; margin:0 auto; padding-block:40px 64px; padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); }
+.eyebrow { font:600 11.5px/1 var(--f-mono); letter-spacing:.14em; text-transform:uppercase; color:var(--mute); }
+h1 { font:800 clamp(34px,7vw,52px)/1.03 var(--f-display); margin:10px 0 14px; text-wrap:balance; }
+.lead { color:var(--mute); font-size:18px; margin:0 0 28px; max-width:62ch; }
+h2 { font:800 24px/1.2 var(--f-display); margin:40px 0 10px; text-wrap:balance; }
+h3 { font-size:17px; margin:24px 0 6px; }
+p, li { max-width:66ch; }
+ul { padding-left:20px; } li { margin:6px 0; }
+a { color:var(--accent); }
+code { font:14px var(--f-mono); background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:1px 6px; }
+.status { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px; margin:6px 0 10px; }
+.status div { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px; }
+.status b { display:block; font:700 18px/1.2 var(--f-display); margin-top:6px; }
+.status small { color:var(--mute); font-size:13px; }
+.yes b { color:var(--ok); } .no b { color:var(--no); } .wait b { color:var(--warn); }
+.two { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.two > div { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:6px 20px 12px; min-width:0; }
+.two h3 { margin-top:14px; }
+@media (max-width:640px) { .two { grid-template-columns:1fr; } }
+details { border-bottom:1px solid var(--line); padding:4px 0; }
+summary { cursor:pointer; font-weight:600; font-size:17px; padding:14px 0; list-style:none; display:flex; justify-content:space-between; gap:12px; }
+summary::-webkit-details-marker { display:none; }
+summary::after { content:"+"; color:var(--accent); font:600 20px/1 var(--f-mono); }
+details[open] summary::after { content:"−"; }
+details p { margin:0 0 16px; color:#c7cddb; }
+.note { background:color-mix(in srgb,var(--warn) 8%,var(--panel)); border:1px solid color-mix(in srgb,var(--warn) 35%,var(--line)); border-radius:14px; padding:14px 16px; font-size:14.5px; }
+footer { border-top:1px solid var(--line); margin-top:48px; padding-top:18px; color:var(--mute); font-size:13px; }
+:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+</style>
+</head>
+<body>
+<header class="top"><div>
+  <a class="brand" href="index.html"><svg width="30" height="30" viewBox="0 0 64 64" aria-hidden="true"><rect x="2" y="2" width="60" height="60" rx="18" fill="#6b78ff"/><path d="M17 18 L32 46 L47 18" fill="none" stroke="#0b0e15" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 33 H51" stroke="#0b0e15" stroke-width="5" stroke-linecap="round"/></svg>VETO</a>
+  <nav><a href="index.html">App</a><a href="security.html">Security</a><a href="faq.html" aria-current=page>FAQ</a><a href="terms.html">Terms</a><a href="privacy.html">Privacy</a></nav>
+</div></header>
+<main>
+
+<span class="eyebrow">FAQ</span>
+<h1>Questions people ask</h1>
+<p class="lead">Short answers about how VETO works, what's live and what's coming.</p>
+<details><summary>What is VETO?</summary><p>An AI trading agent for Robinhood Chain that can&#x27;t go rogue. You chat with the agent to trade, and every move it proposes is checked by a vault contract that enforces your rules before anything is signed.</p></details>
+<details><summary>Is VETO live?</summary><p>VETO runs on Robinhood Chain testnet with free test tokens. The Home, Agent and Rules tabs on the website are a demo of how it works; the Vault tab and the Telegram bot are the real thing on testnet. Mainnet comes after an independent audit.</p></details>
+<details><summary>Can VETO take my funds?</summary><p>No. Your vault belongs to your wallet. Only your wallet can withdraw, change rules or unfreeze. The agent can only propose moves, and the vault checks each one against your rules.</p></details>
+<details><summary>What happens if the VETO bot goes down?</summary><p>Nothing happens to your funds. They stay in your vault, and you can withdraw them from the website at any time. Orders like stop-losses pause until the bot is back.</p></details>
+<details><summary>What does it cost?</summary><p>Testing is free: test tokens come from the faucet on the Vault tab, and you only need a little testnet ETH for gas. Pricing for mainnet will be published before launch.</p></details>
+<details><summary>Do I need the $VETO token?</summary><p>No. You can use VETO without holding any token. $VETO hasn&#x27;t launched; the planned design uses it to secure the Sentinel threat list. There is no presale, and anyone offering one is not us.</p></details>
+<details><summary>Which wallets work?</summary><p>Any browser wallet that supports EVM chains, such as MetaMask, Rabby or Coinbase Wallet. The site will ask to add Robinhood Chain testnet for you.</p></details>
+<details><summary>How do I get test tokens?</summary><p>Open the Vault tab, connect your wallet and press &quot;Get 10,000 test USDG&quot;. You can claim once a day. Test tokens have no value.</p></details>
+<details><summary>What is the agent key?</summary><p>A separate key the bot uses to propose trades for your vault. It can&#x27;t withdraw or change your rules. If it ever leaked, the worst it could do is propose moves your vault would still check, and you can freeze the vault and switch to a new agent.</p></details>
+<details><summary>Who can see my data?</summary><p>Your trades and vault are on a public blockchain, like everything on-chain. The bot stores only which Telegram chat is linked to which vault, plus your open orders. See the Privacy page for details.</p></details><footer>Last updated October 29, 2026. VETO is experimental software on Robinhood Chain testnet. Nothing here is financial or legal advice.</footer>
+</main>
+</body>
+</html>
